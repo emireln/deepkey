@@ -20,7 +20,7 @@ export function SupportButton({ variant = "nav" }: { variant?: "nav" | "about" }
   }
 
   return (
-    <button type="button" className="nav-item support-btn" title={t("support")} onClick={open}>
+    <button type="button" className="nav-item support-btn" data-tone="red" title={t("support")} onClick={open}>
       <Heart className="nav-icon" size={20} weight="bold" />
       <span className="nav-label">{t("support")}</span>
     </button>

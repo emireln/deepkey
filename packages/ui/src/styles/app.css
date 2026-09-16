@@ -48,7 +48,7 @@
   --overlay: rgba(0, 0, 0, 0.55);
   --shadow: none;
   --titlebar-h: 40px;
-  --sidebar-w: 264px;
+  --sidebar-w: 280px;
   --sidebar-collapsed-w: 72px;
   --radius-sm: 8px;
   --radius-md: 10px;
@@ -253,8 +253,8 @@ a {
 }
 
 .brand .brand-mark {
-  width: 28px;
-  height: 28px;
+  width: 34px;
+  height: 34px;
 }
 
 .brand-word {
@@ -269,6 +269,11 @@ a {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.sidebar .brand-word {
+  font-size: 24px;
+  letter-spacing: 0.06em;
 }
 
 .titlebar-word {
@@ -353,19 +358,30 @@ a {
   color: var(--text-primary);
 }
 
-.nav-item.active .nav-icon {
-  color: var(--accent);
-}
-
 .nav-icon {
   width: 20px;
   height: 20px;
-  color: var(--text-tertiary);
+  color: var(--nav-tone, var(--text-tertiary));
   flex: none;
 }
 
-.nav-item:hover .nav-icon {
-  color: var(--text-secondary);
+.nav-item[data-tone="blue"] { --nav-tone: #4ea3ff; }
+.nav-item[data-tone="purple"] { --nav-tone: #b57bff; }
+.nav-item[data-tone="yellow"] { --nav-tone: #f0c040; }
+.nav-item[data-tone="green"] { --nav-tone: #3dcc8a; }
+.nav-item[data-tone="orange"] { --nav-tone: #ff8a4c; }
+.nav-item[data-tone="cyan"] { --nav-tone: #2ecfe8; }
+.nav-item[data-tone="teal"] { --nav-tone: #2dd4bf; }
+.nav-item[data-tone="magenta"] { --nav-tone: #e879f9; }
+.nav-item[data-tone="red"] { --nav-tone: #f07171; }
+.nav-item[data-tone="lime"] { --nav-tone: #84cc16; }
+.nav-item[data-tone="indigo"] { --nav-tone: #818cf8; }
+.nav-item[data-tone="slate"] { --nav-tone: #94a3b8; }
+
+.nav-item:hover .nav-icon,
+.nav-item.active .nav-icon {
+  color: var(--nav-tone, var(--text-primary));
+  filter: brightness(1.08);
 }
 
 .sidebar.collapsed .nav-item {
@@ -396,10 +412,16 @@ a {
   padding-right: 0;
 }
 
+.support-btn .nav-icon,
+.support-btn svg {
+  color: #e24b4a;
+}
+
 .support-btn:hover,
 .support-btn:hover .nav-icon,
 .support-btn:hover svg {
   color: #e24b4a;
+  filter: brightness(1.12);
 }
 
 .sidebar-profile {
@@ -1137,7 +1159,7 @@ a {
     display: flex;
   }
   .mobile-bar .brand-word {
-    font-size: 16px;
+    font-size: 20px;
   }
   .grid-2 {
     grid-template-columns: 1fr;

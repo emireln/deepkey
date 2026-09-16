@@ -1,0 +1,12 @@
+#!/bin/sh
+# If Cursor amends the trailer in after commit, drop it without bumping again.
+msg=$(git log -1 --format=%B)
+case "$msg" in
+  *Co-authored-by:\ Cursor*)
+    tmp=$(mktemp)
+    printf '%s\n' "$msg" | grep -v "Co-authored-by: Cursor" > "$tmp"
+    SKIP_BUMP=1 git commit --amend -F "$tmp" --no-verify
+    rm -f "$tmp"
+    ;;
+esac
+exit 0

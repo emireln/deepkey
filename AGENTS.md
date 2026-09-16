@@ -75,7 +75,7 @@ Tests that hit Argon2 should pass `KDF_MIN` (or a test kdf). Do not call `calibr
 
 ## UI
 
-- Dark charcoal. Geist / Inter for UI. The "deepkey" wordmark uses Horizon (Orbitron bundled locally if Horizon is not installed). Phosphor icons, not Lucide.
+- Dark charcoal. Geist / Inter for UI. The "deepkey" wordmark uses Horizon (Orbitron bundled locally if Horizon is not installed). Phosphor icons, not Lucide. Each sidebar item keeps its own icon color. Do not paint every active icon accent blue.
 - UI copy is bold and 16px base. Don't shrink labels back to 13px.
 - Primary buttons are white. Do not restyle the app into a generic dashboard.
 - i18n lives in `packages/ui/src/i18n/en.ts` and `pt-BR.ts`. Add both when you add a string.
