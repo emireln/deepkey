@@ -140,6 +140,7 @@ export function createWebPlatform(): PlatformAdapter {
       },
     },
     openExternal(url) {
+      if (typeof url !== "string" || !url.startsWith("https://")) return;
       window.open(url, "_blank", "noopener,noreferrer");
     },
     notifications: {

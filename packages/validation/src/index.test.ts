@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertNoPathTraversal, formatHint, safeFilename, scorePassword } from "./index.js";
+import { assertNoPathTraversal, formatHint, opaqueIdSchema, parseOpaqueId, safeFilename, scorePassword } from "./index.js";
 
 describe("validation", () => {
   it("scores passwords", () => {
@@ -18,5 +18,13 @@ describe("validation", () => {
     expect(safeFilename("../etc/passwd")).toBe("file");
     expect(safeFilename("key.pem")).toBe("key.pem");
     expect(() => assertNoPathTraversal("../x")).toThrow();
+  });
+
+  it("accepts vault ids and rejects traversal-looking keys", () => {
+    expect(opaqueIdSchema.parse("550e8400-e29b-41d4-a716-446655440000")).toBe("550e8400-e29b-41d4-a716-446655440000");
+    expect(opaqueIdSchema.parse("settings")).toBe("settings");
+    expect(() => parseOpaqueId("../secret")).toThrow("Invalid id.");
+    expect(() => parseOpaqueId("..")).toThrow("Invalid id.");
+    expect(() => parseOpaqueId("a".repeat(81))).toThrow("Invalid id.");
   });
 });

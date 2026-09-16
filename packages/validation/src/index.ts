@@ -26,8 +26,23 @@ export const vaultHeaderSchema = z.object({
   displayName: z.string().min(1).max(80),
 });
 
+export const PREF_VALUE_MAX = 1_000_000;
+
+export const opaqueIdSchema = z
+  .string()
+  .min(1)
+  .max(80)
+  .regex(/^[A-Za-z0-9._-]+$/)
+  .refine((value) => !value.includes(".."), { message: "Invalid id." });
+
+export function parseOpaqueId(id: unknown): string {
+  const parsed = opaqueIdSchema.safeParse(id);
+  if (!parsed.success) throw new Error("Invalid id.");
+  return parsed.data;
+}
+
 export const storedRecordSchema = z.object({
-  id: z.string().min(1).max(80),
+  id: opaqueIdSchema,
   nonce: z.string().min(8),
   ciphertext: z.string().min(8),
   aad: z.string(),
@@ -38,8 +53,8 @@ export const storedRecordSchema = z.object({
 });
 
 export const storedAttachmentSchema = z.object({
-  id: z.string().min(1).max(80),
-  recordId: z.string().min(1).max(80),
+  id: opaqueIdSchema,
+  recordId: opaqueIdSchema,
   nonce: z.string().min(8),
   ciphertext: z.string().min(8),
   cryptoVersion: z.number().int(),

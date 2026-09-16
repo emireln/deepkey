@@ -1,23 +1,84 @@
 import fs from "node:fs";
+import path from "node:path";
 import { APP_VERSION, ITEM_TYPES } from "@deepkey/config";
-import type { VaultItem } from "@deepkey/types";
+import { mergeAppSettings, type AppSettings, type VaultItem } from "@deepkey/types";
 import { sqliteVaultStore } from "@deepkey/database";
-import { DEFAULT_GENERATOR, generateSecret, itemSecret, VaultEngine } from "@deepkey/vault-core";
+import { DEFAULT_GENERATOR, generateSecret, inspectBackup, itemSecret, VaultEngine } from "@deepkey/vault-core";
+import { masterPasswordSchema } from "@deepkey/validation";
 import { playBoot, playLock, printBanner } from "./banner.js";
 import {
+  cancelClipboardWatch,
   clear,
-  copyText,
+  copySecret,
+  IdleLock,
   ink,
   line,
   pickList,
   promptLine,
   readKey,
   restoreTerminal,
+  setIdleLimit,
   waitKey,
   withSpinner,
 } from "./term.js";
 
 const SECRET_FIELDS = new Set(["value", "password", "privateKey", "certificate", "token", "secret"]);
+const MAX_ENV_BYTES = 1_000_000;
+const MAX_BACKUP_BYTES = 50 * 1024 * 1024;
+
+type Store = ReturnType<typeof sqliteVaultStore>;
+
+function requireMaster(password: string): string {
+  const parsed = masterPasswordSchema.safeParse(password);
+  if (!parsed.success) throw new Error("Use at least 12 characters.");
+  return parsed.data;
+}
+
+function resolveUserPath(input: string): string {
+  const trimmed = input.trim();
+  if (!trimmed || trimmed.includes("\0")) throw new Error("Invalid path.");
+  return path.resolve(trimmed);
+}
+
+function writeSecretFile(dest: string, contents: string): void {
+  fs.writeFileSync(resolveUserPath(dest), contents, { encoding: "utf8", mode: 0o600 });
+}
+
+function readLimitedFile(src: string, maxBytes: number): string {
+  const file = resolveUserPath(src);
+  const stat = fs.statSync(file);
+  if (stat.size > maxBytes) throw new Error("File is too large.");
+  return fs.readFileSync(file, "utf8");
+}
+
+function loadSettings(engine: VaultEngine, store: Store): AppSettings {
+  let settings = mergeAppSettings(null);
+  try {
+    const raw = store.getKv("settings");
+    if (raw) settings = mergeAppSettings(JSON.parse(raw));
+  } catch {
+    settings = mergeAppSettings(null);
+  }
+  engine.applySettings(settings);
+  return settings;
+}
+
+async function confirmExportPassword(engine: VaultEngine): Promise<boolean> {
+  if (!engine.appSettings.security.requirePasswordForExport) return true;
+  const password = await promptLine("Master password: ", true);
+  if (!engine.verifyMasterPassword(password)) {
+    line(ink.red("Wrong master password."));
+    await pause();
+    return false;
+  }
+  return true;
+}
+
+async function copied(engine: VaultEngine, value: string): Promise<void> {
+  const ok = await copySecret(value, engine.appSettings.security.clipboardTimeoutMs);
+  line(ok ? ink.white("Copied. Clipboard clears if it still matches.") : ink.red("Could not copy."));
+  await pause();
+}
 
 function typeLabel(type: string): string {
   return type.replaceAll("_", " ");
@@ -49,9 +110,8 @@ async function unlockOrCreate(engine: VaultEngine): Promise<void> {
     line();
     const name = (await promptLine("Display name: ")).trim();
     if (!name) throw new Error("Need a display name.");
-    const password = await promptLine("Master password: ", true);
+    const password = requireMaster(await promptLine("Master password: ", true));
     const confirm = await promptLine("Confirm password: ", true);
-    if (password.length < 12) throw new Error("Use at least 12 characters.");
     if (password !== confirm) throw new Error("Passwords do not match.");
     const ack = (await promptLine('Type UNDERSTAND: ')).trim().toUpperCase();
     if (ack !== "UNDERSTAND") throw new Error("Vault not created.");
@@ -75,7 +135,8 @@ async function home(engine: VaultEngine): Promise<"lock" | "quit"> {
     { id: "search", label: "Search" },
     { id: "new", label: "New secret" },
     { id: "trash", label: "Trash" },
-    { id: "backup", label: "Export backup" },
+    { id: "backup", label: "Backup" },
+    { id: "security", label: "Security" },
     { id: "lock", label: "Lock" },
     { id: "quit", label: "Quit" },
   ] as const;
@@ -99,6 +160,10 @@ async function home(engine: VaultEngine): Promise<"lock" | "quit"> {
     if (id === "new") await newSecret(engine);
     if (id === "trash") await trash(engine);
     if (id === "backup") await backup(engine);
+    if (id === "security") {
+      const gone = await security(engine);
+      if (gone) return "lock";
+    }
   }
 }
 
@@ -184,10 +249,8 @@ async function itemDetail(engine: VaultEngine, start: VaultItem): Promise<void> 
         line(ink.red("Nothing to copy."));
         await pause();
       } else {
-        const ok = await copyText(secret);
         await engine.touchItem(item.id);
-        line(ok ? ink.white("Copied.") : ink.red("Could not copy. Print it with deepkey get instead."));
-        await pause();
+        await copied(engine, secret);
       }
     }
     if (key.t === "char" && key.v.toLowerCase() === "t") {
@@ -309,8 +372,9 @@ async function envFiles(engine: VaultEngine): Promise<void> {
     if (eIdx === null) return;
     const dest = (await promptLine("Write to path: ")).trim();
     if (!dest) return;
-    fs.writeFileSync(dest, engine.exportEnv(project.id, envs[eIdx]!.id));
-    line(ink.white(`Wrote ${dest}. Treat it as a secret.`));
+    if (!(await confirmExportPassword(engine))) return;
+    writeSecretFile(dest, engine.exportEnv(project.id, envs[eIdx]!.id));
+    line(ink.white(`Wrote ${resolveUserPath(dest)}. Treat it as a secret.`));
     await pause();
     return;
   }
@@ -318,12 +382,20 @@ async function envFiles(engine: VaultEngine): Promise<void> {
     const eIdx = await pickList("Environment", envs.map((e) => e.name));
     if (eIdx === null) return;
     const src = (await promptLine(".env path: ")).trim();
-    if (!src || !fs.existsSync(src)) {
+    if (!src) {
       line(ink.red("File not found."));
       await pause();
       return;
     }
-    const preview = engine.previewEnvImport(project.id, envs[eIdx]!.id, fs.readFileSync(src, "utf8"));
+    let raw: string;
+    try {
+      raw = readLimitedFile(src, MAX_ENV_BYTES);
+    } catch (err) {
+      line(ink.red(err instanceof Error ? err.message : "Could not read file."));
+      await pause();
+      return;
+    }
+    const preview = engine.previewEnvImport(project.id, envs[eIdx]!.id, raw);
     clear();
     line(ink.bold("Import preview"));
     line(`  new      ${preview.created.length}`);
@@ -337,7 +409,7 @@ async function envFiles(engine: VaultEngine): Promise<void> {
       ...preview.changed.map((row) => ({ key: row.key, action: "replace" as const })),
       ...preview.existing.map((entry) => ({ key: entry.key, action: "keep" as const })),
     ];
-    await engine.applyEnvImport(project.id, envs[eIdx]!.id, fs.readFileSync(src, "utf8"), decisions);
+    await engine.applyEnvImport(project.id, envs[eIdx]!.id, raw, decisions);
     line(ink.white("Imported."));
     await pause();
     return;
@@ -380,9 +452,7 @@ async function generator(engine: VaultEngine): Promise<void> {
       value = generateSecret({ ...DEFAULT_GENERATOR, kind, length: kind === "passphrase" ? 6 : 24 });
     }
     if (key.t === "char" && key.v.toLowerCase() === "c") {
-      const ok = await copyText(value);
-      line(ok ? ink.white("Copied.") : ink.red("Could not copy."));
-      await pause();
+      await copied(engine, value);
     }
     if (key.t === "char" && key.v.toLowerCase() === "s") {
       const name = (await promptLine("Name: ")).trim();
@@ -424,12 +494,93 @@ async function trash(engine: VaultEngine): Promise<void> {
 }
 
 async function backup(engine: VaultEngine): Promise<void> {
-  const dest = (await promptLine("Write .deepkeyvault to: ")).trim();
-  if (!dest) return;
-  const payload = await engine.exportBackup();
-  fs.writeFileSync(dest, JSON.stringify(payload));
-  line(ink.white("Encrypted backup written."));
+  const idx = await pickList("Backup", ["Export encrypted backup", "Import encrypted backup", "Verify backup file"]);
+  if (idx === null) return;
+  if (idx === 0) {
+    const dest = (await promptLine("Write .deepkeyvault to: ")).trim();
+    if (!dest) return;
+    if (!(await confirmExportPassword(engine))) return;
+    const payload = await engine.exportBackup();
+    writeSecretFile(dest, JSON.stringify(payload));
+    line(ink.white("Encrypted backup written. It still needs the master password."));
+    await pause();
+    return;
+  }
+  if (idx === 1) {
+    const src = (await promptLine("Backup file: ")).trim();
+    if (!src) return;
+    let payload: unknown;
+    try {
+      payload = JSON.parse(readLimitedFile(src, MAX_BACKUP_BYTES));
+      inspectBackup(payload);
+    } catch (err) {
+      line(ink.red(err instanceof Error ? err.message : "Invalid backup."));
+      await pause();
+      return;
+    }
+    line(ink.dim("Import replaces this vault. You will need that backup's master password."));
+    const go = (await promptLine("Type IMPORT: ")).trim();
+    if (go !== "IMPORT") return;
+    await engine.importBackup(payload);
+    line(ink.white("Imported. Unlock with the backup's master password."));
+    await pause();
+    throw new IdleLock();
+  }
+  const src = (await promptLine("Backup file: ")).trim();
+  if (!src) return;
+  try {
+    const info = inspectBackup(JSON.parse(readLimitedFile(src, MAX_BACKUP_BYTES)));
+    clear();
+    line(ink.bold("Backup"));
+    line();
+    line(`  name     ${ink.white(info.displayName)}`);
+    line(`  records  ${ink.white(String(info.records))}`);
+    line(`  files    ${ink.white(String(info.attachments))}`);
+    line(`  from     ${ink.white(new Date(info.exportedAt).toISOString())}`);
+    line();
+    line(ink.dim("Envelope looks intact. Import still needs the master password."));
+  } catch (err) {
+    line(ink.red(err instanceof Error ? err.message : "Invalid backup."));
+  }
   await pause();
+}
+
+async function security(engine: VaultEngine): Promise<boolean> {
+  const idx = await pickList("Security", ["Change master password", "Delete vault"]);
+  if (idx === null) return false;
+  if (idx === 0) {
+    const current = await promptLine("Current master password: ", true);
+    const next = requireMaster(await promptLine("New master password: ", true));
+    const confirm = await promptLine("Confirm new password: ", true);
+    if (next !== confirm) {
+      line(ink.red("Passwords do not match."));
+      await pause();
+      return false;
+    }
+    try {
+      await engine.changeMasterPassword(current, next);
+      line(ink.white("Master password changed. Item ciphertext is the same; only the wrap changed."));
+    } catch (err) {
+      line(ink.red(err instanceof Error ? err.message : "Could not change password."));
+    }
+    await pause();
+    return false;
+  }
+  line(ink.red("This deletes the vault on this database. Encrypted backups are not deleted."));
+  line(ink.dim("There is no recovery."));
+  const ack = (await promptLine("Type UNDERSTAND: ")).trim();
+  if (ack !== "UNDERSTAND") return false;
+  const password = await promptLine("Master password: ", true);
+  try {
+    await engine.wipe(password);
+    line(ink.white("Vault deleted."));
+    await pause();
+    return true;
+  } catch (err) {
+    line(ink.red(err instanceof Error ? err.message : "Could not delete the vault."));
+    await pause();
+    return false;
+  }
 }
 
 export async function runTui(dbPath: string): Promise<void> {
@@ -438,18 +589,29 @@ export async function runTui(dbPath: string): Promise<void> {
     restoreTerminal();
     process.exit(1);
   });
-  const engine = new VaultEngine(sqliteVaultStore(dbPath));
+  const store = sqliteVaultStore(dbPath);
+  const engine = new VaultEngine(store);
   try {
     await playBoot(`personal encrypted vault  ·  v${APP_VERSION}`);
     line(ink.dim(dbPath));
     line();
     for (;;) {
+      setIdleLimit(-1);
+      cancelClipboardWatch();
       if (engine.unlocked) engine.lock();
+      const settings = loadSettings(engine, store);
       await unlockOrCreate(engine);
-      const end = await home(engine);
-      engine.lock();
-      await playLock();
-      if (end === "quit") break;
+      setIdleLimit(settings.security.autoLockMs);
+      try {
+        const end = await home(engine);
+        engine.lock();
+        await playLock();
+        if (end === "quit") break;
+      } catch (err) {
+        engine.lock();
+        if (!(err instanceof IdleLock)) throw err;
+        await playLock();
+      }
       clear();
       printBanner();
       line();
@@ -457,6 +619,8 @@ export async function runTui(dbPath: string): Promise<void> {
       line();
     }
   } finally {
+    setIdleLimit(-1);
+    cancelClipboardWatch();
     engine.lock();
     restoreTerminal();
   }

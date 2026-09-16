@@ -1,4 +1,4 @@
-import { DEFAULT_APP_SETTINGS, type AppSettings, type VaultItem } from "@deepkey/types";
+import { DEFAULT_APP_SETTINGS, mergeAppSettings, type AppSettings, type VaultItem } from "@deepkey/types";
 import { VaultEngine } from "@deepkey/vault-core";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { t } from "../i18n/index.js";
@@ -50,10 +50,8 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       const raw = await platform.prefs.get("settings");
       if (raw) {
         try {
-          const parsed = { ...DEFAULT_APP_SETTINGS, ...JSON.parse(raw) } as AppSettings;
-          parsed.ui = { ...DEFAULT_APP_SETTINGS.ui, ...parsed.ui };
-          parsed.security = { ...DEFAULT_APP_SETTINGS.security, ...parsed.security };
-          parsed.backup = { ...DEFAULT_APP_SETTINGS.backup, ...parsed.backup };
+          const parsed = mergeAppSettings(JSON.parse(raw));
+          engineRef.current.applySettings(parsed);
           if (!cancelled) {
             setSettings(parsed);
             setLocale(parsed.ui.locale);
@@ -89,21 +87,23 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 
   const saveSettings = useCallback(
     async (next: AppSettings) => {
-      setSettings(next);
-      setLocale(next.ui.locale);
-      document.documentElement.dataset.theme = next.ui.theme;
-      document.documentElement.dataset.density = next.ui.density;
-      await platform.prefs.set("settings", JSON.stringify(next));
-      if (platform.window && next.security.contentProtection) {
+      const merged = mergeAppSettings(next);
+      engineRef.current.applySettings(merged);
+      setSettings(merged);
+      setLocale(merged.ui.locale);
+      document.documentElement.dataset.theme = merged.ui.theme;
+      document.documentElement.dataset.density = merged.ui.density;
+      await platform.prefs.set("settings", JSON.stringify(merged));
+      if (platform.window && merged.security.contentProtection) {
         await platform.window.setContentProtection(true);
       } else if (platform.window) {
         await platform.window.setContentProtection(false);
       }
       if (platform.desktop) {
-        await platform.desktop.setLaunchAtStartup(next.ui.launchAtStartup);
-        await platform.desktop.setTray(next.ui.trayEnabled);
+        await platform.desktop.setLaunchAtStartup(merged.ui.launchAtStartup);
+        await platform.desktop.setTray(merged.ui.trayEnabled);
         if (platform.desktop.setGlobalShortcut) {
-          await platform.desktop.setGlobalShortcut(next.ui.globalShortcutEnabled);
+          await platform.desktop.setGlobalShortcut(merged.ui.globalShortcutEnabled);
         }
       }
     },

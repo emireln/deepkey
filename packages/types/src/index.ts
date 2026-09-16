@@ -283,6 +283,15 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   backup: DEFAULT_BACKUP_SETTINGS,
 };
 
+export function mergeAppSettings(raw: unknown): AppSettings {
+  const parsed = raw && typeof raw === "object" ? (raw as Partial<AppSettings>) : {};
+  return {
+    ui: { ...DEFAULT_APP_SETTINGS.ui, ...(parsed.ui ?? {}) },
+    security: { ...DEFAULT_APP_SETTINGS.security, ...(parsed.security ?? {}) },
+    backup: { ...DEFAULT_APP_SETTINGS.backup, ...(parsed.backup ?? {}) },
+  };
+}
+
 export function emptyItem(partial: Partial<VaultItem> & Pick<VaultItem, "id" | "type" | "name">): VaultItem {
   const now = Date.now();
   return {

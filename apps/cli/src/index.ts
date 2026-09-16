@@ -1,9 +1,8 @@
 import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
 import { stdin, stdout } from "node:process";
-import { sqliteVaultStore } from "@deepkey/database";
-import { itemSecret, VaultEngine } from "@deepkey/vault-core";
+import { resolveLocalVaultDb, sqliteVaultStore } from "@deepkey/database";
+import { mergeAppSettings } from "@deepkey/types";
+import { inspectBackup, itemSecret, VaultEngine } from "@deepkey/vault-core";
 import { runTui } from "./tui.js";
 
 function fail(message: string, code = 1): never {
@@ -33,20 +32,6 @@ function parseArgs(argv: string[]): { db?: string; command: string; rest: string
   const interactive = Boolean(stdin.isTTY && stdout.isTTY);
   const command = rest.shift() ?? (interactive ? "tui" : "help");
   return { db, command, rest };
-}
-
-function defaultDb(): string {
-  if (process.env.DEEPKEY_DB) return process.env.DEEPKEY_DB;
-  if (process.env.DEEPKEY_DATA_DIR) return path.join(process.env.DEEPKEY_DATA_DIR, "deepkey.sqlite");
-  const home = os.homedir();
-  const candidates = [
-    path.join(home, "AppData", "Roaming", "DeepKey", "vault", "deepkey.sqlite"),
-    path.join(home, "Library", "Application Support", "DeepKey", "vault", "deepkey.sqlite"),
-    path.join(home, ".config", "DeepKey", "vault", "deepkey.sqlite"),
-    path.join(process.cwd(), "data-dev", "deepkey.sqlite"),
-    path.join(process.cwd(), "data", "deepkey.sqlite"),
-  ];
-  return candidates.find((file) => fs.existsSync(file)) ?? candidates[0]!;
 }
 
 async function promptPassword(): Promise<string> {
@@ -95,6 +80,13 @@ function pickOne<T extends { name: string }>(items: T[], name: string, label: st
   fail(`Ambiguous ${label} "${name}".`);
 }
 
+function readJsonFile(file: string, maxBytes: number): unknown {
+  if (!file || file.includes("\0")) fail("Invalid path.");
+  const stat = fs.statSync(file);
+  if (stat.size > maxBytes) fail("File is too large.");
+  return JSON.parse(fs.readFileSync(file, "utf8"));
+}
+
 function usage(): string {
   return `deepkey — local encrypted vault
 
@@ -102,10 +94,13 @@ Interactive (TTY):
   deepkey
   deepkey [--db path] tui
 
-One-shot (stdout is plaintext):
+One-shot (stdout is plaintext for get/env):
   deepkey [--db path] list
   deepkey [--db path] get <name>
   deepkey [--db path] env <project> [environment]
+  deepkey [--db path] backup-export <file>
+  deepkey [--db path] backup-import <file>
+  deepkey [--db path] backup-verify <file>
 
 Password: DEEPKEY_MASTER_PASSWORD, or a prompt.
 Database: --db, DEEPKEY_DB, DEEPKEY_DATA_DIR, or the usual desktop/web paths.
@@ -115,16 +110,50 @@ Decrypts on this machine. Do not pipe secrets into a log.
 `;
 }
 
-async function runScript(dbPath: string, command: string, rest: string[]): Promise<void> {
-  if (!fs.existsSync(dbPath)) fail(`No vault database at ${dbPath}.`);
-  const engine = new VaultEngine(sqliteVaultStore(dbPath));
+async function unlockEngine(engine: VaultEngine): Promise<void> {
   if (!(await engine.hasVault())) fail("No vault in that database.");
   try {
     await engine.unlock(await promptPassword());
   } catch (err) {
     fail(err instanceof Error ? err.message : "Could not unlock.");
   }
+}
+
+async function runScript(dbPath: string, command: string, rest: string[]): Promise<void> {
+  if (command === "backup-verify") {
+    const file = rest[0];
+    if (!file) fail("Usage: deepkey backup-verify <file>");
+    try {
+      const info = inspectBackup(readJsonFile(file, 50 * 1024 * 1024));
+      stdout.write(`${info.displayName}\t${info.records} records\t${info.attachments} files\n`);
+    } catch (err) {
+      fail(err instanceof Error ? err.message : "Invalid backup.");
+    }
+    return;
+  }
+
+  if (!fs.existsSync(dbPath) && command !== "backup-import") fail(`No vault database at ${dbPath}.`);
+  const store = sqliteVaultStore(dbPath);
+  const engine = new VaultEngine(store);
   try {
+    try {
+      const raw = store.getKv("settings");
+      if (raw) engine.applySettings(mergeAppSettings(JSON.parse(raw)));
+    } catch {
+      /* defaults */
+    }
+
+    if (command === "backup-import") {
+      const file = rest[0];
+      if (!file) fail("Usage: deepkey backup-import <file>");
+      if (await engine.hasVault()) await unlockEngine(engine);
+      await engine.importBackup(readJsonFile(file, 50 * 1024 * 1024));
+      stdout.write("Imported. Unlock with the backup's master password.\n");
+      return;
+    }
+
+    await unlockEngine(engine);
+
     if (command === "list") {
       for (const item of engine.items().sort((a, b) => a.name.localeCompare(b.name))) {
         stdout.write(`${item.name}\n`);
@@ -147,7 +176,17 @@ async function runScript(dbPath: string, command: string, rest: string[]): Promi
       const envs = engine.environments(project.id);
       const env = rest[1] ? pickOne(envs, rest[1], "environment") : envs[0];
       if (!env) fail("That project has no environments.");
+      if (stderrTty()) process.stderr.write("Plaintext secrets on stdout.\n");
       stdout.write(engine.exportEnv(project.id, env.id));
+      return;
+    }
+    if (command === "backup-export") {
+      const dest = rest[0];
+      if (!dest) fail("Usage: deepkey backup-export <file>");
+      if (dest.includes("\0")) fail("Invalid path.");
+      const payload = await engine.exportBackup();
+      fs.writeFileSync(dest, JSON.stringify(payload), { encoding: "utf8", mode: 0o600 });
+      stdout.write(`Encrypted backup written to ${dest}\n`);
       return;
     }
     fail(usage(), 2);
@@ -156,13 +195,17 @@ async function runScript(dbPath: string, command: string, rest: string[]): Promi
   }
 }
 
+function stderrTty(): boolean {
+  return Boolean(process.stderr.isTTY);
+}
+
 async function main(): Promise<void> {
   const { db, command, rest } = parseArgs(process.argv.slice(2));
   if (command === "help" || command === "-h" || command === "--help") {
     stdout.write(usage());
     return;
   }
-  const dbPath = db ?? defaultDb();
+  const dbPath = db ?? resolveLocalVaultDb();
   if (command === "tui" || command === "open" || command === "ui") {
     if (!stdin.isTTY || !stdout.isTTY) fail("Interactive mode needs a terminal.");
     await runTui(dbPath);

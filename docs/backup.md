@@ -38,9 +38,11 @@ If you turn this on, that folder is now part of your threat model. Anyone with t
 
 Settings → Backup → Verify backup file checks the envelope without importing it.
 
-## Moving between desktop and web
+## Moving between desktop, web, and CLI
 
 The format is the same. Export from one, import on the other. You still need the master password.
+
+The CLI talks to the same sqlite file when it is on this machine (`resolveLocalVaultDb`). Encrypted `.deepkeyvault` is still the right way to move a vault to another computer.
 
 Do not copy the raw SQLite file between machines unless you also understand file locks and paths. The `.deepkeyvault` export is the supported path.
 

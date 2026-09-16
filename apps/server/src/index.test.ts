@@ -23,6 +23,11 @@ describe("server security", () => {
     expect([400, 401, 404]).toContain(res.status);
   });
 
+  it("rejects unauthenticated vault deletes even with junk ids", async () => {
+    const res = await app.request("/api/vault/records/../x", { method: "DELETE" });
+    expect(res.status).toBe(401);
+  });
+
   it("sets security headers", async () => {
     const res = await app.request("/health");
     expect(res.headers.get("x-content-type-options")).toBe("nosniff");

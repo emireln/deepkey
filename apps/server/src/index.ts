@@ -7,7 +7,13 @@ import { Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { secureHeaders } from "hono/secure-headers";
 import { APP_VERSION } from "@deepkey/config";
-import { storedAttachmentSchema, storedRecordSchema, vaultHeaderSchema } from "@deepkey/validation";
+import {
+  opaqueIdSchema,
+  PREF_VALUE_MAX,
+  storedAttachmentSchema,
+  storedRecordSchema,
+  vaultHeaderSchema,
+} from "@deepkey/validation";
 import {
   cookieOptions,
   createSession,
@@ -199,7 +205,9 @@ app.put("/api/vault/records/:id", async (c) => {
 });
 
 app.delete("/api/vault/records/:id", async (c) => {
-  await store.deleteRecord(c.req.param("id"));
+  const id = opaqueIdSchema.safeParse(c.req.param("id"));
+  if (!id.success) return c.json({ error: "Invalid id." }, 400);
+  await store.deleteRecord(id.data);
   return c.json({ ok: true });
 });
 
@@ -208,7 +216,9 @@ app.get("/api/vault/attachments", async (c) => {
 });
 
 app.get("/api/vault/attachments/:id", async (c) => {
-  const attachment = await store.getAttachment(c.req.param("id"));
+  const id = opaqueIdSchema.safeParse(c.req.param("id"));
+  if (!id.success) return c.json({ error: "Invalid id." }, 400);
+  const attachment = await store.getAttachment(id.data);
   if (!attachment) return c.json({ error: "Not found." }, 404);
   return c.json({ attachment });
 });
@@ -220,7 +230,9 @@ app.put("/api/vault/attachments/:id", async (c) => {
 });
 
 app.delete("/api/vault/attachments/:id", async (c) => {
-  await store.deleteAttachment(c.req.param("id"));
+  const id = opaqueIdSchema.safeParse(c.req.param("id"));
+  if (!id.success) return c.json({ error: "Invalid id." }, 400);
+  await store.deleteAttachment(id.data);
   return c.json({ ok: true });
 });
 
@@ -244,16 +256,19 @@ app.get("/api/meta/db-path", (c) => {
 });
 
 app.get("/api/prefs/:key", (c) => {
-  const key = c.req.param("key");
-  if (!/^[a-z0-9._-]+$/i.test(key) || key.includes("..")) return c.json({ error: "Invalid key." }, 400);
-  return c.json({ value: store.getKv(key) });
+  const key = opaqueIdSchema.safeParse(c.req.param("key"));
+  if (!key.success) return c.json({ error: "Invalid key." }, 400);
+  return c.json({ value: store.getKv(key.data) });
 });
 
 app.put("/api/prefs/:key", async (c) => {
-  const key = c.req.param("key");
-  if (!/^[a-z0-9._-]+$/i.test(key) || key.includes("..")) return c.json({ error: "Invalid key." }, 400);
+  const key = opaqueIdSchema.safeParse(c.req.param("key"));
+  if (!key.success) return c.json({ error: "Invalid key." }, 400);
   const body = await c.req.json();
-  store.setKv(key, String(body.value ?? ""));
+  if (typeof body.value !== "string" || body.value.length > PREF_VALUE_MAX) {
+    return c.json({ error: "Invalid pref." }, 400);
+  }
+  store.setKv(key.data, body.value);
   return c.json({ ok: true });
 });
 

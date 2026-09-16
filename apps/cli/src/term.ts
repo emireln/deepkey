@@ -1,5 +1,22 @@
-import { stdin, stdout } from "node:process";
 import { spawn } from "node:child_process";
+import { stdin, stdout } from "node:process";
+
+export class IdleLock extends Error {
+  constructor() {
+    super("Locked due to inactivity.");
+    this.name = "IdleLock";
+  }
+}
+
+let idleLimitMs = -1;
+let lastActivity = Date.now();
+let clipboardTimer: ReturnType<typeof setTimeout> | null = null;
+let lastCopied: string | null = null;
+
+export function setIdleLimit(ms: number): void {
+  idleLimitMs = ms;
+  lastActivity = Date.now();
+}
 
 const color = Boolean(stdout.isTTY) && !process.env.NO_COLOR;
 export const animated = Boolean(stdout.isTTY && stdin.isTTY) && !process.env.CI && process.env.NO_ANIM !== "1";
@@ -78,7 +95,16 @@ export async function readKey(): Promise<Key> {
         }, 30);
         return;
       }
+      const idleFor = Date.now() - lastActivity;
+      lastActivity = Date.now();
       cleanup();
+      if (idleLimitMs >= 0) {
+        const limit = idleLimitMs === 0 ? 250 : idleLimitMs;
+        if (idleFor >= limit) {
+          reject(new IdleLock());
+          return;
+        }
+      }
       resolve(parseKey(buf));
     };
     function cleanup() {
@@ -124,6 +150,15 @@ export async function promptLine(label: string, hidden = false): Promise<string>
           reject(new Error("Cancelled."));
           return;
         }
+        const idleFor = Date.now() - lastActivity;
+        lastActivity = Date.now();
+        if (idleLimitMs >= 0) {
+          const limit = idleLimitMs === 0 ? 250 : idleLimitMs;
+          if (idleFor >= limit) {
+            reject(new IdleLock());
+            return;
+          }
+        }
         resolve(chunk.replace(/\r?\n$/, ""));
       };
       stdin.on("data", onData);
@@ -143,17 +178,28 @@ export async function promptLine(label: string, hidden = false): Promise<string>
       if (chunk === "\r" || chunk === "\n") {
         cleanup();
         write("\n");
+        const idleFor = Date.now() - lastActivity;
+        lastActivity = Date.now();
+        if (idleLimitMs >= 0) {
+          const limit = idleLimitMs === 0 ? 250 : idleLimitMs;
+          if (idleFor >= limit && !value) {
+            reject(new IdleLock());
+            return;
+          }
+        }
         resolve(value);
         return;
       }
       if (chunk === "\x7f" || chunk === "\b") {
         if (!value) return;
         value = value.slice(0, -1);
+        lastActivity = Date.now();
         write("\b \b");
         return;
       }
       if (chunk.length === 1 && chunk >= " ") {
         value += chunk;
+        lastActivity = Date.now();
         write(ink.dim("•"));
       }
     };
@@ -228,7 +274,7 @@ export async function withSpinner<T>(label: string, work: Promise<T>): Promise<T
   }
 }
 
-export async function copyText(text: string): Promise<boolean> {
+function writeClipboard(text: string): Promise<boolean> {
   const cmd = process.platform === "win32" ? "clip" : process.platform === "darwin" ? "pbcopy" : "xclip";
   const args = process.platform === "linux" ? ["-selection", "clipboard"] : [];
   return new Promise((resolve) => {
@@ -241,4 +287,77 @@ export async function copyText(text: string): Promise<boolean> {
       resolve(false);
     }
   });
+}
+
+function readClipboard(): Promise<string | null> {
+  const cmd =
+    process.platform === "win32"
+      ? "powershell"
+      : process.platform === "darwin"
+        ? "pbpaste"
+        : "xclip";
+  const args =
+    process.platform === "win32"
+      ? ["-NoProfile", "-Command", "Get-Clipboard -Raw"]
+      : process.platform === "linux"
+        ? ["-selection", "clipboard", "-o"]
+        : [];
+  return new Promise((resolve) => {
+    try {
+      const child = spawn(cmd, args, { stdio: ["ignore", "pipe", "ignore"] });
+      let out = "";
+      const timer = setTimeout(() => {
+        child.kill();
+        resolve(null);
+      }, 2000);
+      child.stdout?.setEncoding("utf8");
+      child.stdout?.on("data", (chunk: string) => {
+        out += chunk;
+      });
+      child.on("error", () => {
+        clearTimeout(timer);
+        resolve(null);
+      });
+      child.on("close", (code) => {
+        clearTimeout(timer);
+        resolve(code === 0 ? out : null);
+      });
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+function sameClipboard(a: string, b: string): boolean {
+  return a.replace(/\r\n/g, "\n").trimEnd() === b.replace(/\r\n/g, "\n").trimEnd();
+}
+
+export async function copyText(text: string): Promise<boolean> {
+  return writeClipboard(text);
+}
+
+export async function copySecret(text: string, timeoutMs: number): Promise<boolean> {
+  const ok = await writeClipboard(text);
+  if (!ok) return false;
+  lastCopied = text;
+  if (clipboardTimer) clearTimeout(clipboardTimer);
+  clipboardTimer = null;
+  if (timeoutMs > 0) {
+    clipboardTimer = setTimeout(() => {
+      void (async () => {
+        if (lastCopied !== text) return;
+        const current = await readClipboard();
+        if (current === null || !sameClipboard(current, text)) return;
+        await writeClipboard("");
+        if (lastCopied === text) lastCopied = null;
+      })();
+    }, timeoutMs);
+  }
+  return true;
+}
+
+export function cancelClipboardWatch(): void {
+  if (clipboardTimer) clearTimeout(clipboardTimer);
+  clipboardTimer = null;
+  lastCopied = null;
 }

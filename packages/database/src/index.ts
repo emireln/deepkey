@@ -175,6 +175,7 @@ export function sqliteVaultStore(filePath: string) {
         sqlite.prepare("DELETE FROM attachments").run();
         sqlite.prepare("DELETE FROM records").run();
         sqlite.prepare("DELETE FROM vault_header").run();
+        sqlite.prepare("DELETE FROM kv").run();
       });
       tx();
     },
@@ -213,3 +214,4 @@ function fromAttachmentRow(row: typeof schema.attachments.$inferSelect): StoredA
 }
 
 export * as schema from "./schema.js";
+export { resolveLocalVaultDb } from "./paths.js";

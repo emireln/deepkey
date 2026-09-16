@@ -29,6 +29,9 @@ Changing the master password re-wraps the DEK. Item ciphertext stays. That is on
 - Rate-limited login
 - CSP, `X-Content-Type-Options`, `Referrer-Policy`, no framing
 - Database holds encrypted vault payloads
+- Record / attachment IDs and pref keys go through the same opaque-id rules as desktop IPC
+- Pref values capped (1 MB), same as desktop
+- `openExternal` in the browser only follows `https://`
 - No secrets in URLs
 - Logger redacts secret-looking keys
 
@@ -42,6 +45,15 @@ The server can see that you logged in. It cannot read vault items.
 - Navigation to random origins denied
 - External links only `https://` via `shell.openExternal`
 - Single-instance lock so two processes do not share one vault file
+- Wipe deletes records, attachments, header, prefs KV, and the OS-unlock blob
+
+## CLI
+
+Unlocks the same sqlite file locally. It does not talk to the HTTP API.
+
+It honors the GUI security settings when that `settings` row exists: auto-lock after idle (next key locks), clipboard timeout with clear-if-unchanged, and re-prompting the master password before a plaintext `.env` or encrypted backup export if that toggle is on.
+
+Wipe and backup import/export go through `vault-core`, same as the apps. `get` / `env` print plaintext on purpose.
 
 ## Clipboard
 

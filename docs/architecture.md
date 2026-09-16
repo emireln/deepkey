@@ -1,12 +1,12 @@
 # Architecture
 
-pnpm monorepo. Two apps on top of the same core.
+pnpm monorepo. Desktop, self-hosted web, and CLI sit on the same core.
 
 ```
 apps/desktop    Electron main + preload + renderer
 apps/web        Vite React shell
 apps/server     Self-hosted Hono/Node API + static UI
-apps/cli        Local unlock + print
+apps/cli        Local TUI + one-shot print
 packages/ui     Shared interface
 packages/vault-core
 packages/crypto
@@ -20,13 +20,15 @@ assets/logo.svg
 
 ## Why it is split this way
 
-I wanted one vault engine, not two products that drift.
+I wanted one vault engine, not three products that drift.
 
-`packages/vault-core` owns behavior: create / unlock / lock, items, projects, environments, `.env` import/export/diff, history, trash, backups, search, generator.
+`packages/vault-core` owns behavior: create / unlock / lock, items, projects, environments, `.env` import/export/diff, history, trash, backups, search, generator, wipe, change master password.
 
-`packages/crypto` is only keys and envelopes. `packages/database` is only SQLite. The UI never talks SQL. The server never sees plaintext records.
+`packages/crypto` is only keys and envelopes. `packages/database` is only SQLite, including `resolveLocalVaultDb()` so the CLI opens the same file the desktop app (or `DEEPKEY_DATA_DIR` web instance) already uses.
 
-Platform adapters (`apps/web/src/platform.ts`, `apps/desktop/src/main.tsx`) fill in storage, clipboard, files, window, and `openExternal`. The React tree is shared.
+The UI never talks SQL. The server never sees plaintext records. The CLI decrypts in-process with the same engine.
+
+Platform adapters (`apps/web/src/platform.ts`, `apps/desktop/src/main.tsx`) fill in storage, clipboard, files, window, and `openExternal`. The React tree is shared. Settings live in sqlite KV (`settings`) and are applied to the engine (`applySettings`) so history limits, trash retention, and attachment caps are the same in the GUI and the CLI.
 
 ## Encrypt, then store
 
@@ -86,6 +88,14 @@ Unlock, decrypt into memory, filter there. Ctrl/Cmd+K is the command palette. `t
 The desktop app can also register Ctrl/Cmd+Shift+K as a global shortcut so search works while DeepKey is in the background.
 
 I did not build a server-side plaintext index. That would undo the point.
+
+## CLI
+
+Same sqlite file, same engine. Interactive mode unlocks, then the same operations as the apps: vault, projects, `.env`, generator, search, trash, encrypted backup import/export, change master password, wipe.
+
+It reads the GUI `settings` row for auto-lock, clipboard timeout, and export password confirmation. Clipboard clear is the desktop rule: only if the clipboard still matches what we copied.
+
+One-shot commands still print plaintext. That is the point of `get` / `env`. Do not redirect that into a log.
 
 ## i18n
 

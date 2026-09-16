@@ -114,7 +114,7 @@ Details: [docs/desktop.md](docs/desktop.md)
 
 ## CLI
 
-On a terminal, unlock the local sqlite vault and use the app from there: overview, secrets, projects, `.env` files, generator, search, trash, backup.
+On a terminal, unlock the local sqlite vault and use the same engine as the apps: overview, secrets, projects, `.env` files, generator, search, trash, backup, change master password, wipe.
 
 ```bash
 pnpm --filter @deepkey/cli start
@@ -125,6 +125,7 @@ The start screen uses the ASCII mark in `apps/cli/cli.txt` (local, gitignored). 
 ```bash
 pnpm --filter @deepkey/cli start -- env Personal Production
 pnpm --filter @deepkey/cli start -- get OPENAI_API_KEY
+pnpm --filter @deepkey/cli start -- backup-export vault.deepkeyvault
 ```
 
 Password from `DEEPKEY_MASTER_PASSWORD` or a prompt. Details: [docs/cli.md](docs/cli.md)

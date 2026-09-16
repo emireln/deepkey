@@ -123,4 +123,30 @@ describe("vault-core", () => {
     expect(vault.verifyMasterPassword(PASS)).toBe(true);
     expect(vault.verifyMasterPassword("nope-nope-nope-nope")).toBe(false);
   });
+
+  it("applies settings so history and trash retention actually change", async () => {
+    const { vault } = await ready();
+    vault.applySettings({
+      ...vault.appSettings,
+      security: { ...vault.appSettings.security, historyLimit: 1, trashRetentionDays: 0 },
+    });
+    const item = await vault.createItem({ type: "token", name: "token", fields: { value: "a" } });
+    await vault.updateItem(item.id, { fields: { value: "b" } });
+    await vault.updateItem(item.id, { fields: { value: "c" } });
+    expect(vault.revisions(item.id).length).toBe(1);
+    await vault.trashItem(item.id);
+    await vault.purgeExpiredTrash();
+    expect(vault.trashItems()).toHaveLength(1);
+  });
+
+  it("wipe needs the master password and clears the store", async () => {
+    const { vault, store } = await ready();
+    await vault.createItem({ type: "api_key", name: "k", fields: { value: "v" } });
+    await expect(vault.wipe("wrong-password-xx")).rejects.toThrow();
+    expect(await store.getHeader()).not.toBeNull();
+    await vault.wipe(PASS);
+    expect(await store.getHeader()).toBeNull();
+    expect(await store.listRecords()).toHaveLength(0);
+    expect(vault.unlocked).toBe(false);
+  });
 });

@@ -34,7 +34,7 @@ import type {
   VaultProject,
   VaultRevision,
 } from "@deepkey/types";
-import { DEFAULT_APP_SETTINGS, emptyItem } from "@deepkey/types";
+import { DEFAULT_APP_SETTINGS, emptyItem, mergeAppSettings } from "@deepkey/types";
 import { backupFileSchema } from "@deepkey/validation";
 import type { VaultStore } from "./store.js";
 import { changedFields, matchesQuery, newId, now } from "./util.js";
@@ -87,6 +87,10 @@ export class VaultEngine {
 
   get appSettings(): AppSettings {
     return this.settings;
+  }
+
+  applySettings(next: AppSettings): void {
+    this.settings = mergeAppSettings(next);
   }
 
   async hasVault(): Promise<boolean> {

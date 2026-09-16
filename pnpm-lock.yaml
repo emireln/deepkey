@@ -19,6 +19,9 @@ importers:
       '@deepkey/types':
         specifier: workspace:*
         version: link:../../packages/types
+      '@deepkey/validation':
+        specifier: workspace:*
+        version: link:../../packages/validation
       '@deepkey/vault-core':
         specifier: workspace:*
         version: link:../../packages/vault-core

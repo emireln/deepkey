@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { sqliteVaultStore } from "@deepkey/database";
-import { storedAttachmentSchema, storedRecordSchema, vaultHeaderSchema } from "@deepkey/validation";
+import { parseOpaqueId, PREF_VALUE_MAX, storedAttachmentSchema, storedRecordSchema, vaultHeaderSchema } from "@deepkey/validation";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isDev = Boolean(process.env.VITE_DEV_SERVER_URL);
@@ -191,10 +191,7 @@ function saveWindowState(win: BrowserWindow): void {
 }
 
 function assertId(id: unknown): string {
-  if (typeof id !== "string" || !/^[A-Za-z0-9._-]+$/.test(id) || id.length > 80) {
-    throw new Error("Invalid id.");
-  }
-  return id;
+  return parseOpaqueId(id);
 }
 
 function mimeFromFile(filePath: string, bytes: Buffer): string {
@@ -293,7 +290,11 @@ function registerIpc(): void {
       storedAttachmentSchema.array().parse(payload.attachments),
     ),
   );
-  ipcMain.handle("vault:wipe", () => store.wipe());
+  ipcMain.handle("vault:wipe", async () => {
+    await store.wipe();
+    const file = userData("os-unlock.bin");
+    if (fs.existsSync(file)) fs.unlinkSync(file);
+  });
   ipcMain.handle("vault:dbPath", () => dbFile());
   ipcMain.handle("prefs:get", (_e, key) => {
     assertId(key);
@@ -301,7 +302,7 @@ function registerIpc(): void {
   });
   ipcMain.handle("prefs:set", (_e, key, value) => {
     assertId(key);
-    if (typeof value !== "string" || value.length > 1_000_000) throw new Error("Invalid pref.");
+    if (typeof value !== "string" || value.length > PREF_VALUE_MAX) throw new Error("Invalid pref.");
     store.setKv(key, value);
   });
   ipcMain.handle("clipboard:write", (_e, text) => {
