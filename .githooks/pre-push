@@ -1,0 +1,3 @@
+#!/bin/sh
+# Push whatever was committed. Version already moved on commit.
+exit 0

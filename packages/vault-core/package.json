@@ -1,0 +1,26 @@
+{
+  "name": "@deepkey/vault-core",
+  "version": "1.0.4",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@deepkey/config": "workspace:*",
+    "@deepkey/crypto": "workspace:*",
+    "@deepkey/env-parser": "workspace:*",
+    "@deepkey/types": "workspace:*",
+    "@deepkey/validation": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

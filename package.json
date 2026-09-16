@@ -1,0 +1,33 @@
+{
+  "name": "deepkey",
+  "version": "1.0.4",
+  "private": true,
+  "description": "Personal self-hosted encrypted vault for secrets, .env files, keys, and notes.",
+  "license": "MIT",
+  "packageManager": "pnpm@10.15.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @deepkey/web --filter @deepkey/server dev",
+    "dev:web": "pnpm --parallel --filter @deepkey/web --filter @deepkey/server dev",
+    "dev:desktop": "pnpm --filter @deepkey/desktop dev",
+    "build": "pnpm -r --if-present build",
+    "build:web": "pnpm --filter @deepkey/web build && pnpm --filter @deepkey/server build",
+    "build:desktop": "pnpm --filter @deepkey/desktop build",
+    "test": "pnpm -r --if-present test",
+    "test:security": "pnpm --filter @deepkey/crypto test && pnpm --filter @deepkey/vault-core test && pnpm --filter @deepkey/server test && node scripts/security-check.mjs",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "e2e": "pnpm --filter @deepkey/web e2e",
+    "prepare": "node scripts/install-hooks.mjs",
+    "bump": "node scripts/bump-version.mjs"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3",
+      "electron",
+      "esbuild",
+      "electron-winstaller"
+    ]
+  }
+}

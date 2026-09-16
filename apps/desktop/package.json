@@ -1,0 +1,33 @@
+{
+  "name": "@deepkey/desktop",
+  "version": "1.0.4",
+  "private": true,
+  "type": "module",
+  "main": "dist-electron/main.cjs",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "vite build && node scripts/build-electron.mjs",
+    "pack": "pnpm build && electron-builder --config electron-builder.yml",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@deepkey/config": "workspace:*",
+    "@deepkey/database": "workspace:*",
+    "@deepkey/types": "workspace:*",
+    "@deepkey/ui": "workspace:*",
+    "@deepkey/validation": "workspace:*",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.1",
+    "@types/react": "^19.1.12",
+    "@types/react-dom": "^19.1.9",
+    "@vitejs/plugin-react": "^5.0.2",
+    "electron": "^37.4.0",
+    "electron-builder": "^26.0.12",
+    "esbuild": "^0.25.9",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.5"
+  }
+}

@@ -1,0 +1,15 @@
+services:
+  deepkey:
+    build: .
+    ports:
+      - "8787:8787"
+    environment:
+      DEEPKEY_DATA_DIR: /data
+      DEEPKEY_HOST: 0.0.0.0
+      DEEPKEY_PORT: 8787
+    volumes:
+      - deepkey-data:/data
+    restart: unless-stopped
+
+volumes:
+  deepkey-data:

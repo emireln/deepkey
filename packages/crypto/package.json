@@ -1,0 +1,26 @@
+{
+  "name": "@deepkey/crypto",
+  "version": "1.0.4",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@deepkey/config": "workspace:*",
+    "@deepkey/types": "workspace:*",
+    "@noble/ciphers": "^1.3.0",
+    "@noble/hashes": "^1.8.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

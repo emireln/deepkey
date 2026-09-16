@@ -1,0 +1,39 @@
+appId: app.deepkey.desktop
+productName: DeepKey
+directories:
+  output: release
+  buildResources: ../../assets
+files:
+  - dist/**
+  - dist-electron/**
+extraResources:
+  - from: ../../assets/icon.png
+    to: icons/icon.png
+  - from: ../../assets/tray.png
+    to: icons/tray.png
+  - from: ../../assets/logo.svg
+    to: icons/logo.svg
+asar: true
+asarUnpack:
+  - "**/*.node"
+win:
+  icon: ../../assets/icon.png
+  target:
+    - nsis
+  artifactName: DeepKey-Setup-${version}.${ext}
+mac:
+  icon: ../../assets/icon.png
+  target:
+    - dmg
+  category: public.app-category.productivity
+  hardenedRuntime: true
+linux:
+  icon: ../../assets/icon.png
+  target:
+    - AppImage
+    - deb
+  category: Utility
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+publish: null
