@@ -116,7 +116,13 @@ Details: [docs/desktop.md](docs/desktop.md)
 
 ## CLI
 
-Unlock the local sqlite vault on this machine and print. Same engine as the apps.
+On a terminal, unlock the local sqlite vault and use the app from there: overview, secrets, projects, `.env` files, generator, search, trash, backup.
+
+```bash
+pnpm --filter @deepkey/cli start
+```
+
+The start screen uses the ASCII mark in `apps/cli/cli.txt` (local, gitignored). Scripting still works:
 
 ```bash
 pnpm --filter @deepkey/cli start -- env Personal Production

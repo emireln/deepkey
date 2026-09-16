@@ -4,6 +4,7 @@ import path from "node:path";
 import { stdin, stdout } from "node:process";
 import { sqliteVaultStore } from "@deepkey/database";
 import { itemSecret, VaultEngine } from "@deepkey/vault-core";
+import { runTui } from "./tui.js";
 
 function fail(message: string, code = 1): never {
   process.stderr.write(`${message}\n`);
@@ -29,7 +30,8 @@ function parseArgs(argv: string[]): { db?: string; command: string; rest: string
     rest.push(arg);
     i += 1;
   }
-  const command = rest.shift() ?? "help";
+  const interactive = Boolean(stdin.isTTY && stdout.isTTY);
+  const command = rest.shift() ?? (interactive ? "tui" : "help");
   return { db, command, rest };
 }
 
@@ -94,9 +96,13 @@ function pickOne<T extends { name: string }>(items: T[], name: string, label: st
 }
 
 function usage(): string {
-  return `deepkey — pull secrets from a local vault
+  return `deepkey — local encrypted vault
 
-Usage:
+Interactive (TTY):
+  deepkey
+  deepkey [--db path] tui
+
+One-shot (stdout is plaintext):
   deepkey [--db path] list
   deepkey [--db path] get <name>
   deepkey [--db path] env <project> [environment]
@@ -104,17 +110,12 @@ Usage:
 Password: DEEPKEY_MASTER_PASSWORD, or a prompt.
 Database: --db, DEEPKEY_DB, DEEPKEY_DATA_DIR, or the usual desktop/web paths.
 
-Decrypts on this machine. Prints plaintext to stdout. Do not pipe that into a log.
+Banner: apps/cli/cli.txt on this machine (not in git).
+Decrypts on this machine. Do not pipe secrets into a log.
 `;
 }
 
-async function main(): Promise<void> {
-  const { db, command, rest } = parseArgs(process.argv.slice(2));
-  if (command === "help" || command === "-h" || command === "--help") {
-    stdout.write(usage());
-    return;
-  }
-  const dbPath = db ?? defaultDb();
+async function runScript(dbPath: string, command: string, rest: string[]): Promise<void> {
   if (!fs.existsSync(dbPath)) fail(`No vault database at ${dbPath}.`);
   const engine = new VaultEngine(sqliteVaultStore(dbPath));
   if (!(await engine.hasVault())) fail("No vault in that database.");
@@ -153,6 +154,21 @@ async function main(): Promise<void> {
   } finally {
     engine.lock();
   }
+}
+
+async function main(): Promise<void> {
+  const { db, command, rest } = parseArgs(process.argv.slice(2));
+  if (command === "help" || command === "-h" || command === "--help") {
+    stdout.write(usage());
+    return;
+  }
+  const dbPath = db ?? defaultDb();
+  if (command === "tui" || command === "open" || command === "ui") {
+    if (!stdin.isTTY || !stdout.isTTY) fail("Interactive mode needs a terminal.");
+    await runTui(dbPath);
+    return;
+  }
+  await runScript(dbPath, command, rest);
 }
 
 main().catch((err) => fail(err instanceof Error ? err.message : "Failed."));

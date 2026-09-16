@@ -33,3 +33,4 @@ packages/*/dist
 .cache
 *.tsbuildinfo
 userData
+apps/cli/cli.txt

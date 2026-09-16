@@ -10,9 +10,15 @@ importers:
 
   apps/cli:
     dependencies:
+      '@deepkey/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@deepkey/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@deepkey/types':
+        specifier: workspace:*
+        version: link:../../packages/types
       '@deepkey/vault-core':
         specifier: workspace:*
         version: link:../../packages/vault-core

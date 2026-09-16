@@ -10,7 +10,7 @@ If you change code here, keep it boring and keep secrets off disk in plaintext.
 apps/desktop     Electron main, preload, renderer
 apps/web         Vite React shell
 apps/server      Hono API + static UI
-apps/cli         Local unlock + print
+apps/cli         Local unlock, TUI, and print
 packages/ui      Shared screens and styles
 packages/vault-core
 packages/crypto
@@ -105,8 +105,6 @@ Docs are in `docs/` and the root README. Write them like a person who built the 
 ## Commits
 
 When a feature or enhancement is done, commit it and push it. Do not leave it in the working tree.
-
-Never add `Co-authored-by: Cursor` or any other Cursor co-author trailer. `.githooks/commit-msg` strips it if something injects one anyway.
 
 ## Version
 
