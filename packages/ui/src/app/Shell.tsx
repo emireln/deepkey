@@ -61,6 +61,7 @@ export function AppShell() {
           open={drawer}
           onClose={() => setDrawer(false)}
           onToggle={() => {
+            if (window.matchMedia("(max-width: 860px)").matches) return;
             const next = !collapsed;
             setCollapsed(next);
             if (settings.ui.rememberSidebar) {

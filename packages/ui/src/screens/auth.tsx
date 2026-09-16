@@ -206,7 +206,10 @@ export function LockScreen() {
   return (
     <div className="lock-screen">
       <div className="auth-card">
-        <Logo size={36} />
+        <div className="lock-brand">
+          <Logo size={36} />
+          <span className="brand-word">{t("app")}</span>
+        </div>
         <h1>{t("vaultLocked")}</h1>
         <Field label={t("masterPassword")}>
           <Input

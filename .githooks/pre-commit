@@ -4,6 +4,5 @@ if [ "$SKIP_BUMP" = "1" ]; then
   exit 0
 fi
 node scripts/bump-version.mjs || exit 1
-git add package.json packages/config/src/index.ts
-git add apps/*/package.json packages/*/package.json
+git add package.json apps/*/package.json packages/*/package.json
 exit 0

@@ -14,7 +14,9 @@
 
 @font-face {
   font-family: "Horizon";
-  src: local("Horizon"), local("Horizon Regular"), url("./fonts/Orbitron.ttf") format("truetype");
+  src: local("Horizon"), local("Horizon Regular"),
+    url("./fonts/Orbitron-Bold.woff2") format("woff2"),
+    url("./fonts/Orbitron-Bold.ttf") format("truetype");
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -55,7 +57,7 @@
   --control-h: 40px;
   --font: "Geist", "Segoe UI", system-ui, sans-serif;
   --font-mono: "Geist Mono", "Cascadia Mono", ui-monospace, monospace;
-  --font-brand: "Horizon", "Orbitron", sans-serif;
+  --font-brand: "Horizon", sans-serif;
   --space-page: 36px;
 }
 
@@ -96,7 +98,7 @@ body,
   color: var(--text-primary);
   font-family: var(--font);
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.5;
   letter-spacing: -0.011em;
 }
@@ -217,7 +219,8 @@ a {
   padding: 18px 14px 12px;
   flex: none;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
+  position: relative;
   transition: width 160ms ease;
 }
 
@@ -227,12 +230,19 @@ a {
   padding-right: 10px;
 }
 
+.sidebar-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
 .brand {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 6px 4px 18px;
   color: var(--text-primary);
+  flex: none;
 }
 
 .brand-mark {
@@ -249,26 +259,44 @@ a {
 
 .brand-word {
   font-family: var(--font-brand);
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
   line-height: 1;
+  text-transform: lowercase;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .titlebar-word {
-  font-size: 13px;
+  font-size: 14px;
+  flex: none;
+}
+
+.lock-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.lock-brand .brand-word {
+  font-size: 22px;
+  flex: none;
 }
 
 .sidebar-toggle,
 .sidebar-close {
-  margin-left: auto;
   width: 32px;
   height: 32px;
   flex: none;
-  border: 0;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: transparent;
-  color: var(--text-secondary);
+  background: var(--surface-1);
+  color: var(--text-primary);
   display: grid;
   place-items: center;
 }
@@ -359,17 +387,25 @@ a {
 }
 
 .sidebar.collapsed .sidebar-toggle {
-  margin-left: 0;
+  margin: 0;
 }
 
-.sidebar-spacer {
-  flex: 1;
+.sidebar.collapsed .profile-btn {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
 }
 
 .support-btn:hover,
 .support-btn:hover .nav-icon,
 .support-btn:hover svg {
   color: #e24b4a;
+}
+
+.sidebar-profile {
+  position: relative;
+  flex: none;
+  padding-top: 8px;
 }
 
 .profile-btn {
@@ -395,8 +431,8 @@ a {
   background: var(--surface-1);
   display: grid;
   place-items: center;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 700;
   overflow: hidden;
   flex: none;
 }
@@ -617,8 +653,8 @@ a {
 
 .cell-muted {
   color: var(--text-secondary);
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
 }
 
 .row-actions {
@@ -636,7 +672,7 @@ a {
 
 .field label,
 .field-label {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--text-secondary);
 }
@@ -737,8 +773,8 @@ a {
 
 .hint {
   color: var(--text-tertiary);
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   margin: 0;
 }
 
@@ -786,7 +822,8 @@ a {
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 8px 14px;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 700;
   z-index: 80;
 }
 
@@ -875,7 +912,7 @@ a {
   margin: 0 0 8px;
   color: var(--text-primary);
   font-size: 18px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .details {
@@ -892,7 +929,8 @@ a {
 
 .detail-k {
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 700;
   margin-bottom: 6px;
 }
 
@@ -923,7 +961,7 @@ a {
 
 .template b {
   display: block;
-  font-weight: 550;
+  font-weight: 700;
   margin-bottom: 4px;
 }
 
@@ -1085,6 +1123,9 @@ a {
   .sidebar.open.collapsed .brand-word,
   .sidebar.open.collapsed .profile-meta {
     display: revert;
+  }
+  .sidebar.open .brand-word {
+    flex: 1;
   }
   .sidebar.open .sidebar-toggle {
     display: none;

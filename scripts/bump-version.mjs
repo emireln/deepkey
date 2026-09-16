@@ -37,15 +37,4 @@ for (const dir of ["apps", "packages"]) {
   }
 }
 
-const indexSrc = path.join(root, "packages", "config", "src", "index.ts");
-const index = fs.readFileSync(indexSrc, "utf8");
-if (!index.includes(`export const APP_VERSION = "`)) {
-  console.error("Could not find APP_VERSION in packages/config/src/index.ts");
-  process.exit(1);
-}
-fs.writeFileSync(
-  indexSrc,
-  index.replace(/export const APP_VERSION = "[^"]+";/, `export const APP_VERSION = "${next}";`),
-);
-
 console.log(`Version ${rootPkg.version} -> ${next}`);

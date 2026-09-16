@@ -6,6 +6,7 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { secureHeaders } from "hono/secure-headers";
+import { APP_VERSION } from "@deepkey/config";
 import { storedAttachmentSchema, storedRecordSchema, vaultHeaderSchema } from "@deepkey/validation";
 import {
   cookieOptions,
@@ -89,7 +90,7 @@ app.use("*", async (c, next) => {
   await next();
 });
 
-app.get("/health", (c) => c.json({ ok: true, version: "1.0.0" }));
+app.get("/health", (c) => c.json({ ok: true, version: APP_VERSION }));
 
 app.get("/api/auth/setup-needed", (c) => c.json({ needed: userCount() === 0 }));
 

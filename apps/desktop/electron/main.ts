@@ -8,6 +8,9 @@ import { storedAttachmentSchema, storedRecordSchema, vaultHeaderSchema } from "@
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isDev = Boolean(process.env.VITE_DEV_SERVER_URL);
 nativeTheme.themeSource = "dark";
+if (process.platform === "win32") {
+  app.setAppUserModelId("app.deepkey.desktop");
+}
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -60,11 +63,19 @@ function trayIconPath(): string {
   return brandIconPath();
 }
 
-function loadBrandImage(): Electron.NativeImage | null {
-  const file = brandIconPath();
+function loadNativeImage(file: string, size?: number): Electron.NativeImage | null {
   if (!fs.existsSync(file)) return null;
-  const image = nativeImage.createFromPath(file);
-  return image.isEmpty() ? null : image;
+  let image = nativeImage.createFromPath(file);
+  if (image.isEmpty()) return null;
+  if (size) {
+    const { width } = image.getSize();
+    if (width !== size) image = image.resize({ width: size, height: size, quality: "best" });
+  }
+  return image;
+}
+
+function loadBrandImage(): Electron.NativeImage | null {
+  return loadNativeImage(brandIconPath());
 }
 
 function setTrayEnabled(enabled: boolean): void {
@@ -74,10 +85,8 @@ function setTrayEnabled(enabled: boolean): void {
     return;
   }
   if (tray) return;
-  const file = trayIconPath();
-  if (!fs.existsSync(file)) return;
-  const image = nativeImage.createFromPath(file);
-  if (image.isEmpty()) return;
+  const image = loadNativeImage(trayIconPath(), 32) ?? loadNativeImage(brandIconPath(), 32);
+  if (!image) return;
   tray = new Tray(image);
   tray.setToolTip("DeepKey");
   tray.setContextMenu(
@@ -94,6 +103,7 @@ function setTrayEnabled(enabled: boolean): void {
 function showMainWindow(): void {
   if (!mainWindow) return;
   if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.setSkipTaskbar(false);
   mainWindow.show();
   mainWindow.focus();
 }
@@ -169,7 +179,7 @@ function createWindow(): void {
       nodeIntegration: false,
       sandbox: true,
       webviewTag: false,
-      navigateOnDragAndDrop: false,
+      navigateOnDragDrop: false,
     },
   });
 
@@ -178,10 +188,13 @@ function createWindow(): void {
     mainWindow?.show();
   });
   mainWindow.on("close", (event) => {
-    if (mainWindow) saveWindowState(mainWindow);
+    const win = mainWindow;
+    if (!win) return;
+    saveWindowState(win);
     if (!quitting && settingsWantTray() && tray) {
       event.preventDefault();
-      mainWindow?.hide();
+      win.setSkipTaskbar(true);
+      win.hide();
     }
   });
   mainWindow.on("blur", () => mainWindow?.webContents.send("window:blur"));

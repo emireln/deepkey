@@ -1,6 +1,8 @@
+import pkg from "../package.json" with { type: "json" };
+
 export const APP_NAME = "DeepKey";
 export const APP_ID = "deepkey";
-export const APP_VERSION = "1.0.4";
+export const APP_VERSION: string = pkg.version;
 export const SOURCE_URL = "https://github.com/emireln/deepkey";
 export const SUPPORT_URL = "https://buymeacoffee.com/emireln";
 

@@ -83,32 +83,33 @@ export function Sidebar({
             aria-label={collapsed ? t("expandSidebar") : t("collapseSidebar")}
             onClick={onToggle}
           >
-            {collapsed ? <CaretRight size={18} weight="bold" /> : <CaretLeft size={18} weight="bold" />}
+            {collapsed ? <CaretRight size={16} weight="bold" /> : <CaretLeft size={16} weight="bold" />}
           </button>
           <button type="button" className="sidebar-close" aria-label={t("closeSidebar")} onClick={onClose}>
-            <X size={18} weight="bold" />
+            <X size={16} weight="bold" />
           </button>
         </div>
-        <nav className="nav-group">
-          {PRIMARY.map((item) => (
-            <NavLink key={item.to} to={item.to} className={({ isActive }) => `nav-item${isActive ? " active" : ""}`} onClick={onClose} title={t(item.key)}>
-              <item.icon className="nav-icon" size={20} weight="bold" />
-              <span className="nav-label">{t(item.key)}</span>
-            </NavLink>
-          ))}
-        </nav>
-        <div className="nav-sep" />
-        <nav className="nav-group">
-          {SECONDARY.map((item) => (
-            <NavLink key={item.to} to={item.to} className={({ isActive }) => `nav-item${isActive ? " active" : ""}`} onClick={onClose} title={t(item.key)}>
-              <item.icon className="nav-icon" size={20} weight="bold" />
-              <span className="nav-label">{t(item.key)}</span>
-            </NavLink>
-          ))}
-        </nav>
-        <SupportButton />
-        <div className="sidebar-spacer" />
-        <div ref={ref} style={{ position: "relative" }}>
+        <div className="sidebar-scroll">
+          <nav className="nav-group">
+            {PRIMARY.map((item) => (
+              <NavLink key={item.to} to={item.to} className={({ isActive }) => `nav-item${isActive ? " active" : ""}`} onClick={onClose} title={t(item.key)}>
+                <item.icon className="nav-icon" size={20} weight="bold" />
+                <span className="nav-label">{t(item.key)}</span>
+              </NavLink>
+            ))}
+          </nav>
+          <div className="nav-sep" />
+          <nav className="nav-group">
+            {SECONDARY.map((item) => (
+              <NavLink key={item.to} to={item.to} className={({ isActive }) => `nav-item${isActive ? " active" : ""}`} onClick={onClose} title={t(item.key)}>
+                <item.icon className="nav-icon" size={20} weight="bold" />
+                <span className="nav-label">{t(item.key)}</span>
+              </NavLink>
+            ))}
+          </nav>
+          <SupportButton />
+        </div>
+        <div ref={ref} className="sidebar-profile">
           <button type="button" className="profile-btn" onClick={() => setMenu((v) => !v)}>
             <span className="avatar">
               {profile?.avatarDataUrl ? <img src={profile.avatarDataUrl} alt="" /> : initials(name)}

@@ -1,4 +1,4 @@
-import { APP_VERSION, AUTO_LOCK_OPTIONS, CLIPBOARD_TIMEOUTS, DATABASE_SCHEMA_VERSION, CRYPTO_FORMAT_VERSION, VAULT_FORMAT_VERSION, TRASH_RETENTION } from "@deepkey/config";
+import { AUTO_LOCK_OPTIONS, CLIPBOARD_TIMEOUTS, DATABASE_SCHEMA_VERSION, CRYPTO_FORMAT_VERSION, VAULT_FORMAT_VERSION, TRASH_RETENTION } from "@deepkey/config";
 import { DEFAULT_APP_SETTINGS, type AppSettings } from "@deepkey/types";
 import { scorePassword } from "@deepkey/validation";
 import { useEffect, useState } from "react";
@@ -401,7 +401,7 @@ export function AboutBody() {
     <div>
       <h2 className="section-title brand-word">deepkey</h2>
       <p className="hint">
-        {t("version")} {APP_VERSION}
+        {t("version")} {platform.appVersion}
         <br />
         {t("formatVersion")} {VAULT_FORMAT_VERSION}
         <br />
