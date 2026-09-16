@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { BrowserRouter, HashRouter, Navigate, Route, Routes, useParams } from "react-router-dom";
 import { ToastHost } from "../components/feedback.js";
-import { Titlebar } from "../components/Titlebar.js";
+import { LoadingScreen } from "../components/LoadingScreen.js";
 import { PlatformContext } from "../platform/context.js";
 import type { PlatformAdapter } from "../platform/types.js";
 import { DesktopOnboarding, LockScreen, WebAuth, WebVaultSetup } from "../screens/auth.js";
@@ -15,13 +15,7 @@ import { AppShell } from "./Shell.js";
 
 function Gate({ children }: { children: ReactNode }) {
   const { ready, hasVault, unlocked } = useVault();
-  if (!ready) {
-    return (
-      <div className="auth-screen">
-        <Titlebar />
-      </div>
-    );
-  }
+  if (!ready) return <LoadingScreen />;
   if (!hasVault) return <>{children}</>;
   if (!unlocked) return <LockScreen />;
   return <>{children}</>;
@@ -85,7 +79,7 @@ function Root({ platform, authed }: { platform: PlatformAdapter; authed: boolean
 
 function Boot({ platform }: { platform: PlatformAdapter }) {
   const { ready, hasVault } = useVault();
-  if (!ready) return <div className="auth-screen" />;
+  if (!ready) return <LoadingScreen />;
   if (!hasVault) {
     return platform.kind === "web" ? <WebVaultSetup /> : <DesktopOnboarding />;
   }

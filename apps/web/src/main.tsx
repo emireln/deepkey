@@ -1,6 +1,6 @@
 import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { DeepKeyApp } from "@deepkey/ui";
+import { DeepKeyApp, LoadingScreen } from "@deepkey/ui";
 import { createWebPlatform } from "./platform.js";
 
 const platform = createWebPlatform();
@@ -10,7 +10,7 @@ function Root() {
   useEffect(() => {
     platform.auth!.me().then((user) => setAuthed(Boolean(user)));
   }, []);
-  if (authed === null) return null;
+  if (authed === null) return <LoadingScreen />;
   return <DeepKeyApp platform={platform} authed={authed} />;
 }
 

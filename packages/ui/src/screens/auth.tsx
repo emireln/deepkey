@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { AUTO_LOCK_OPTIONS, CLIPBOARD_TIMEOUTS } from "@deepkey/config";
 import { scorePassword } from "@deepkey/validation";
 import { Logo } from "../components/Logo.js";
+import { LoadingScreen } from "../components/LoadingScreen.js";
 import { Button, Checkbox, Field, Input, Select } from "../components/controls.js";
 import { t } from "../i18n/index.js";
 import { useVault } from "../state/vault.js";
@@ -16,6 +17,8 @@ export function DesktopOnboarding() {
   const [confirm, setConfirm] = useState("");
   const strength = scorePassword(password, [name]);
   const mismatch = confirm.length > 0 && password !== confirm;
+
+  if (busy) return <LoadingScreen />;
 
   return (
     <div className="auth-screen">
@@ -122,7 +125,7 @@ export function WebAuth() {
     platform.auth?.needsSetup().then(setSetup);
   }, [platform]);
 
-  if (setup === null) return <div className="auth-screen">{t("loading")}</div>;
+  if (setup === null || busy) return <LoadingScreen />;
 
   async function submit() {
     setBusy(true);
@@ -164,6 +167,7 @@ export function WebVaultSetup() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const strength = scorePassword(password, [name]);
+  if (busy) return <LoadingScreen />;
   return (
     <div className="auth-screen">
       <div className="auth-card">
@@ -203,6 +207,7 @@ export function LockScreen() {
   useEffect(() => {
     platform.osUnlock?.available().then(setOsAvail);
   }, [platform]);
+  if (busy) return <LoadingScreen />;
   return (
     <div className="lock-screen">
       <div className="auth-card">

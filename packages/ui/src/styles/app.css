@@ -237,9 +237,10 @@ a {
 }
 
 .brand {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
+  column-gap: 10px;
   padding: 6px 4px 18px;
   color: var(--text-primary);
   flex: none;
@@ -298,6 +299,8 @@ a {
   width: 32px;
   height: 32px;
   flex: none;
+  grid-column: 3;
+  grid-row: 1;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface-1);
@@ -757,6 +760,14 @@ a {
   background: var(--app-bg);
 }
 
+.loading-screen {
+  gap: 0;
+}
+
+.loading-screen .orb-grid {
+  margin: 0 auto;
+}
+
 .auth-card {
   width: min(420px, 100%);
 }
@@ -1045,7 +1056,7 @@ a {
   display: none;
   height: 52px;
   align-items: center;
-  justify-content: space-between;
+  grid-template-columns: var(--control-h) minmax(0, 1fr) var(--control-h);
   padding: 0 14px;
   border-bottom: 1px solid var(--border);
 }
@@ -1133,8 +1144,12 @@ a {
     padding-left: 14px;
     padding-right: 14px;
   }
+  .sidebar.open .brand,
   .sidebar.open.collapsed .brand {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     flex-direction: row;
+    align-items: center;
     padding: 6px 4px 18px;
   }
   .sidebar.open.collapsed .nav-item {
@@ -1144,10 +1159,16 @@ a {
   .sidebar.open.collapsed .nav-label,
   .sidebar.open.collapsed .brand-word,
   .sidebar.open.collapsed .profile-meta {
-    display: revert;
+    display: block;
   }
-  .sidebar.open .brand-word {
+  .sidebar.open .brand-word,
+  .sidebar.open.collapsed .brand-word {
     flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 17px;
+    letter-spacing: 0.04em;
   }
   .sidebar.open .sidebar-toggle {
     display: none;
@@ -1156,10 +1177,12 @@ a {
     display: grid;
   }
   .mobile-bar {
-    display: flex;
+    display: grid;
   }
   .mobile-bar .brand-word {
-    font-size: 20px;
+    font-size: 17px;
+    letter-spacing: 0.04em;
+    text-align: center;
   }
   .grid-2 {
     grid-template-columns: 1fr;
