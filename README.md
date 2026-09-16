@@ -1,5 +1,3 @@
-# DeepKey
-
 <img src="assets/banner.svg" alt="deepkey" height="64">
 
 Personal encrypted vault. I keep `.env` files, API keys, tokens, passwords, SSH keys, certificates, notes, and small files in it.
