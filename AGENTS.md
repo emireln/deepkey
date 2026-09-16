@@ -102,6 +102,12 @@ If you add a feature, put it behind the existing vault engine when it is vault d
 
 Docs are in `docs/` and the root README. Write them like a person who built the thing, not a brochure.
 
+## Commits
+
+When a feature or enhancement is done, commit it and push it. Do not leave it in the working tree.
+
+Never add `Co-authored-by: Cursor` or any other Cursor co-author trailer. `.githooks/commit-msg` strips it if something injects one anyway.
+
 ## Version
 
 Root `package.json` is the source of truth. About reads `APP_VERSION` from `packages/config/src/index.ts`, which the bump script keeps in sync with every workspace `package.json`.
