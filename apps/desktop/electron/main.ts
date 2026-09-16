@@ -1,4 +1,4 @@
-import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeImage, nativeTheme, powerMonitor, safeStorage, session, shell, Tray } from "electron";
+import { app, BrowserWindow, clipboard, dialog, globalShortcut, ipcMain, Menu, nativeImage, nativeTheme, Notification, powerMonitor, safeStorage, session, shell, Tray } from "electron";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -48,6 +48,10 @@ const CHANNELS = [
   "osUnlock:clear",
   "desktop:setLaunchAtStartup",
   "desktop:setTray",
+  "desktop:setGlobalShortcut",
+  "backup:writeAuto",
+  "backup:pickDir",
+  "notifications:show",
   "app:openExternal",
 ] as const;
 
@@ -106,6 +110,43 @@ function showMainWindow(): void {
   mainWindow.setSkipTaskbar(false);
   mainWindow.show();
   mainWindow.focus();
+}
+
+function settingsWantShortcut(): boolean {
+  try {
+    const raw = store?.getKv("settings");
+    if (!raw) return false;
+    return JSON.parse(raw)?.ui?.globalShortcutEnabled === true;
+  } catch {
+    return false;
+  }
+}
+
+const GLOBAL_SHORTCUT = "CommandOrControl+Shift+K";
+
+function setGlobalShortcutEnabled(enabled: boolean): boolean {
+  globalShortcut.unregisterAll();
+  if (!enabled) return true;
+  return globalShortcut.register(GLOBAL_SHORTCUT, () => {
+    showMainWindow();
+    mainWindow?.webContents.send("palette");
+  });
+}
+
+function backupsDir(preferred?: string | null): string {
+  if (preferred && path.isAbsolute(preferred) && !preferred.includes("\0")) return preferred;
+  return userData("backups");
+}
+
+function pruneBackups(dir: string): void {
+  const files = fs
+    .readdirSync(dir)
+    .filter((name) => name.endsWith(".deepkeyvault"))
+    .map((name) => ({ name, mtime: fs.statSync(path.join(dir, name)).mtimeMs }))
+    .sort((a, b) => b.mtime - a.mtime);
+  for (const extra of files.slice(14)) {
+    fs.unlinkSync(path.join(dir, extra.name));
+  }
 }
 
 function settingsWantTray(): boolean {
@@ -317,6 +358,29 @@ function registerIpc(): void {
   ipcMain.handle("desktop:setTray", (_e, enabled) => {
     setTrayEnabled(Boolean(enabled));
   });
+  ipcMain.handle("desktop:setGlobalShortcut", (_e, enabled) => {
+    return setGlobalShortcutEnabled(Boolean(enabled));
+  });
+  ipcMain.handle("backup:pickDir", async () => {
+    const result = await dialog.showOpenDialog(mainWindow!, { properties: ["openDirectory", "createDirectory"] });
+    if (result.canceled || !result.filePaths[0]) return null;
+    return result.filePaths[0];
+  });
+  ipcMain.handle("backup:writeAuto", (_e, bytes, dir) => {
+    const folder = backupsDir(typeof dir === "string" ? dir : null);
+    fs.mkdirSync(folder, { recursive: true });
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+    const file = path.join(folder, `deepkey-${stamp}.deepkeyvault`);
+    const data = bytes instanceof Uint8Array ? bytes : Buffer.from(bytes);
+    fs.writeFileSync(file, data);
+    pruneBackups(folder);
+    return file;
+  });
+  ipcMain.handle("notifications:show", (_e, title, body) => {
+    if (typeof title !== "string" || typeof body !== "string") return;
+    if (title.length > 120 || body.length > 280) return;
+    new Notification({ title, body, silent: true }).show();
+  });
   ipcMain.handle("app:openExternal", (_e, url) => {
     if (typeof url !== "string" || !url.startsWith("https://")) throw new Error("Blocked URL.");
     return shell.openExternal(url);
@@ -338,12 +402,17 @@ if (!gotLock) {
     session.defaultSession.setPermissionRequestHandler((_w, _p, cb) => cb(false));
     registerIpc();
     setTrayEnabled(settingsWantTray());
+    setGlobalShortcutEnabled(settingsWantShortcut());
     createWindow();
     powerMonitor.on("suspend", () => mainWindow?.webContents.send("system:sleep"));
     powerMonitor.on("lock-screen", () => mainWindow?.webContents.send("system:lock"));
     powerMonitor.on("resume", () => mainWindow?.webContents.send("system:resume"));
   });
 }
+
+app.on("will-quit", () => {
+  globalShortcut.unregisterAll();
+});
 
 app.on("before-quit", () => {
   quitting = true;

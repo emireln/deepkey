@@ -15,11 +15,13 @@ import {
   rewrapDek,
   unlockDek,
 } from "@deepkey/crypto";
-import { envEntriesToMap, parseEnv, serializeEnv } from "@deepkey/env-parser";
+import { envEntriesToMap, parseEnv, serializeCompose, serializeEnv, serializeKubernetesSecret } from "@deepkey/env-parser";
 import type {
   AppSettings,
   BackupFile,
+  EnvDiffRow,
   EnvEntry,
+  EnvExportFormat,
   EnvImportDecision,
   KdfParams,
   StoredAttachment,
@@ -49,6 +51,7 @@ export type CommandId =
   | "new-secret"
   | "new-project"
   | "import-env"
+  | "compare-env"
   | "lock"
   | "generator"
   | "settings";
@@ -57,8 +60,9 @@ const COMMANDS: { id: CommandId; title: string; keywords: string }[] = [
   { id: "new-secret", title: "New Secret", keywords: "create add secret" },
   { id: "new-project", title: "New Project", keywords: "create add project" },
   { id: "import-env", title: "Import .env", keywords: "import dotenv env" },
+  { id: "compare-env", title: "Compare environments", keywords: "diff compare env staging production" },
   { id: "lock", title: "Lock Vault", keywords: "lock" },
-  { id: "generator", title: "Generator", keywords: "password token uuid" },
+  { id: "generator", title: "Generator", keywords: "password token uuid passphrase" },
   { id: "settings", title: "Settings", keywords: "preferences" },
 ];
 
@@ -152,6 +156,18 @@ export class VaultEngine {
     const updated = rewrapDek(dek, current, next, header);
     await this.store.setHeader(updated);
     this.header = updated;
+  }
+
+  verifyMasterPassword(password: string): boolean {
+    try {
+      const dek = unlockDek(password, this.requireHeader());
+      const current = this.requireDek();
+      const same = dek.length === current.length && dek.every((byte, i) => byte === current[i]);
+      disposeBytes(dek);
+      return same;
+    } catch {
+      return false;
+    }
   }
 
   private requireDek(): Uint8Array {
@@ -528,8 +544,30 @@ export class VaultEngine {
     }));
   }
 
-  exportEnv(projectId: string, environmentId: string): string {
-    return serializeEnv(this.toEnvEntries(projectId, environmentId));
+  exportEnv(projectId: string, environmentId: string, format: EnvExportFormat = "dotenv"): string {
+    const entries = this.toEnvEntries(projectId, environmentId);
+    if (format === "compose") return serializeCompose(entries);
+    if (format === "kubernetes") {
+      const project = this.getProject(projectId);
+      const env = this.getEnvironment(environmentId);
+      return serializeKubernetesSecret(entries, `${project?.name ?? "deepkey"}-${env?.name ?? "env"}`);
+    }
+    return serializeEnv(entries);
+  }
+
+  diffEnvironments(projectId: string, leftId: string, rightId: string): EnvDiffRow[] {
+    const left = envEntriesToMap(this.toEnvEntries(projectId, leftId));
+    const right = envEntriesToMap(this.toEnvEntries(projectId, rightId));
+    const keys = [...new Set([...left.keys(), ...right.keys()])].sort((a, b) => a.localeCompare(b));
+    return keys.map((key) => {
+      const l = left.get(key)?.value ?? null;
+      const r = right.get(key)?.value ?? null;
+      let status: EnvDiffRow["status"] = "same";
+      if (l === null) status = "added";
+      else if (r === null) status = "removed";
+      else if (l !== r) status = "changed";
+      return { key, status, left: l, right: r };
+    });
   }
 
   previewEnvImport(
@@ -653,33 +691,44 @@ export class VaultEngine {
   }
 
   search(query: string): SearchHit[] {
-    const q = query.trim();
+    let q = query.trim();
+    let typeFilter: string | null = null;
+    const typeMatch = q.match(/\btype:([a-z_]+)\b/i);
+    if (typeMatch?.[1]) {
+      typeFilter = typeMatch[1].toLowerCase();
+      q = q.replace(typeMatch[0], "").trim();
+    }
     const hits: SearchHit[] = [];
-    if (!q) {
+    if (!q && !typeFilter) {
       return COMMANDS.map((c) => ({ id: c.id, kind: "command" as const, title: c.title, subtitle: "Command" }));
     }
-    for (const command of COMMANDS) {
-      if (matchesQuery(`${command.title} ${command.keywords}`, q)) {
-        hits.push({ id: command.id, kind: "command", title: command.title, subtitle: "Command" });
+    if (q) {
+      for (const command of COMMANDS) {
+        if (matchesQuery(`${command.title} ${command.keywords}`, q)) {
+          hits.push({ id: command.id, kind: "command", title: command.title, subtitle: "Command" });
+        }
       }
-    }
-    for (const project of this.projects()) {
-      if (matchesQuery(`${project.name} ${project.description}`, q)) {
-        hits.push({ id: project.id, kind: "project", title: project.name, subtitle: "Project" });
+      for (const project of this.projects()) {
+        if (matchesQuery(`${project.name} ${project.description}`, q)) {
+          hits.push({ id: project.id, kind: "project", title: project.name, subtitle: "Project" });
+        }
       }
-    }
-    for (const env of this.environments()) {
-      const project = env.projectId ? this.getProject(env.projectId) : null;
-      if (matchesQuery(`${env.name} ${project?.name ?? ""}`, q)) {
-        hits.push({
-          id: env.id,
-          kind: "environment",
-          title: env.name,
-          subtitle: project?.name ?? "Environment",
-        });
+      for (const env of this.environments()) {
+        const project = env.projectId ? this.getProject(env.projectId) : null;
+        if (matchesQuery(`${env.name} ${project?.name ?? ""}`, q)) {
+          hits.push({
+            id: env.id,
+            kind: "environment",
+            title: env.name,
+            subtitle: project?.name ?? "Environment",
+          });
+        }
       }
     }
     for (const item of this.items()) {
+      if (typeFilter && item.type !== typeFilter && !item.type.replaceAll("_", "").includes(typeFilter.replaceAll("_", ""))) {
+        continue;
+      }
       const project = item.projectId ? this.getProject(item.projectId) : null;
       const env = item.environmentId ? this.getEnvironment(item.environmentId) : null;
       const hay = [
@@ -693,7 +742,7 @@ export class VaultEngine {
         project?.name ?? "",
         env?.name ?? "",
       ].join(" ");
-      if (matchesQuery(hay, q)) {
+      if (!q || matchesQuery(hay, q)) {
         hits.push({
           id: item.id,
           kind: "item",
@@ -704,6 +753,13 @@ export class VaultEngine {
       }
     }
     return hits.slice(0, 40);
+  }
+
+  favorites(limit = 8): VaultItem[] {
+    return this.items()
+      .filter((item) => item.favorite)
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .slice(0, limit);
   }
 
   recentlyUsed(limit = 8): VaultItem[] {
@@ -735,7 +791,35 @@ export class VaultEngine {
   }
 }
 
+export function inspectBackup(payload: unknown): {
+  exportedAt: number;
+  appVersion: string;
+  records: number;
+  attachments: number;
+  displayName: string;
+} {
+  const parsed = backupFileSchema.parse(payload);
+  return {
+    exportedAt: parsed.exportedAt,
+    appVersion: parsed.appVersion,
+    records: parsed.records.length,
+    attachments: parsed.attachments.length,
+    displayName: parsed.header.displayName,
+  };
+}
+
+export function verifyBackupPassword(payload: unknown, password: string): boolean {
+  try {
+    const parsed = backupFileSchema.parse(payload);
+    const dek = unlockDek(password, parsed.header);
+    disposeBytes(dek);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export { MemoryVaultStore } from "./store.js";
 export type { VaultStore } from "./store.js";
 export { generateSecret, DEFAULT_GENERATOR } from "./generator.js";
-export { newId } from "./util.js";
+export { itemSecret, newId } from "./util.js";

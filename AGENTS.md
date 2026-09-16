@@ -10,6 +10,7 @@ If you change code here, keep it boring and keep secrets off disk in plaintext.
 apps/desktop     Electron main, preload, renderer
 apps/web         Vite React shell
 apps/server      Hono API + static UI
+apps/cli         Local unlock + print
 packages/ui      Shared screens and styles
 packages/vault-core
 packages/crypto
@@ -22,7 +23,7 @@ assets/logo.svg  Brand mark
 docs/            How it is put together
 ```
 
-`packages/vault-core` is the product. Create, unlock, lock, items, projects, environments, `.env` import/export, history, trash, backups, search, generator.
+`packages/vault-core` is the product. Create, unlock, lock, items, projects, environments, `.env` import/export/diff, history, trash, backups, search, generator.
 
 UI and crypto run in the renderer / browser. SQLite and the HTTP API store opaque envelopes. Do not decrypt on the server. Do not add a "plaintext cache" for convenience.
 

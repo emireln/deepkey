@@ -24,3 +24,12 @@ export function matchesQuery(haystack: string, query: string): boolean {
   if (!query) return true;
   return normalizeSearch(haystack).includes(normalizeSearch(query));
 }
+
+export function itemSecret(item: { fields: Record<string, string>; customFields: { secret?: boolean; value: string }[] }): string | null {
+  if (item.fields.value) return item.fields.value;
+  if (item.fields.password) return item.fields.password;
+  if (item.fields.privateKey) return item.fields.privateKey;
+  if (item.fields.certificate) return item.fields.certificate;
+  const custom = item.customFields.find((field) => field.secret && field.value);
+  return custom?.value ?? null;
+}

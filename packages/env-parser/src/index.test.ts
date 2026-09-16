@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseEnv, serializeEnv, serializeValue } from "./index.js";
+import { parseEnv, serializeCompose, serializeEnv, serializeKubernetesSecret, serializeValue } from "./index.js";
 
 describe("env parser", () => {
   it("parses basic assignments", () => {
@@ -50,5 +50,16 @@ describe("env parser", () => {
   it("keeps inline comments for unquoted values", () => {
     const result = parseEnv("FOO=bar # note\n");
     expect(result.entries[0]).toMatchObject({ key: "FOO", value: "bar", comment: "note" });
+  });
+
+  it("serializes compose and kubernetes secrets", () => {
+    const entries = parseEnv("FOO=bar\nBAZ=qux\n").entries;
+    const compose = serializeCompose(entries);
+    expect(compose).toContain("environment:");
+    expect(compose).toContain("FOO: \"bar\"");
+    const kube = serializeKubernetesSecret(entries, "My App / Prod");
+    expect(kube).toContain("kind: Secret");
+    expect(kube).toContain("name: my-app-prod");
+    expect(kube).toContain("FOO: \"bar\"");
   });
 });

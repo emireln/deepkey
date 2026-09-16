@@ -36,6 +36,7 @@ export interface PlatformAdapter {
     login(username: string, password: string): Promise<void>;
     logout(): Promise<void>;
     me(): Promise<{ username: string } | null>;
+    changePassword?(current: string, next: string): Promise<void>;
   };
   clipboard: {
     write(text: string): Promise<void>;
@@ -58,6 +59,7 @@ export interface PlatformAdapter {
     onSleep(cb: () => void): () => void;
     onLock(cb: () => void): () => void;
     onResume(cb: () => void): () => void;
+    onPalette?(cb: () => void): () => void;
   };
   osUnlock?: {
     available(): Promise<boolean>;
@@ -71,6 +73,9 @@ export interface PlatformAdapter {
   desktop?: {
     setLaunchAtStartup(enabled: boolean): Promise<void>;
     setTray(enabled: boolean): Promise<void>;
+    setGlobalShortcut?(enabled: boolean): Promise<boolean>;
+    writeAutoBackup?(bytes: Uint8Array, dir?: string | null): Promise<string>;
+    pickBackupDir?(): Promise<string | null>;
   };
   openExternal(url: string): void;
 }

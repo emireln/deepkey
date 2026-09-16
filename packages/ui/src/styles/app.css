@@ -730,6 +730,9 @@ a {
 
 .input.mono,
 .textarea.mono,
+.mono {
+  font-family: var(--font-mono);
+}
 .secret-value {
   font-family: var(--font-mono);
   font-size: 13px;
@@ -1043,6 +1046,50 @@ a {
 .badge-warn {
   color: var(--warning);
   font-size: 13px;
+}
+
+.banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  margin-bottom: 20px;
+}
+
+.banner p {
+  margin: 0;
+  font-weight: 700;
+}
+
+.btn.is-on {
+  background: var(--nav-active);
+}
+
+.diff-tag {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.diff-tag.added {
+  color: var(--success);
+}
+
+.diff-tag.removed {
+  color: var(--danger);
+}
+
+.diff-tag.changed {
+  color: var(--warning);
+}
+
+.diff-tag.same {
+  color: var(--text-tertiary);
 }
 
 .editor {

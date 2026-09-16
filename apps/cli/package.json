@@ -1,0 +1,22 @@
+{
+  "name": "@deepkey/cli",
+  "version": "1.0.8",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "deepkey": "./src/index.ts"
+  },
+  "scripts": {
+    "start": "node --import tsx src/index.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@deepkey/database": "workspace:*",
+    "@deepkey/vault-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.1",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  }
+}

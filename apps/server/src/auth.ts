@@ -120,6 +120,37 @@ export function sessionUser(token: string | undefined): { id: string; username: 
   return { id: row.id, username: row.username };
 }
 
+export function changeUserPassword(userId: string, current: string, next: string): boolean {
+  const row = store.sqlite.prepare("SELECT password_hash, kdf FROM users WHERE id = ?").get(userId) as
+    | { password_hash: string; kdf: string }
+    | undefined;
+  if (!row) return false;
+  const kdf = JSON.parse(row.kdf) as KdfParams;
+  const currentHash = bytesToB64(deriveKek(current, kdf));
+  if (currentHash !== row.password_hash) return false;
+  const parsedNext = authPasswordSchema.parse(next);
+  const nextKdf: KdfParams = {
+    algorithm: "argon2id",
+    version: 0x13,
+    t: 3,
+    m: 19456,
+    p: 1,
+    dkLen: 32,
+    salt: bytesToB64(randomBytes(16)),
+  };
+  const nextHash = bytesToB64(deriveKek(parsedNext, nextKdf));
+  store.sqlite.prepare("UPDATE users SET password_hash = ?, kdf = ? WHERE id = ?").run(nextHash, JSON.stringify(nextKdf), userId);
+  return true;
+}
+
+export function destroyOtherSessions(userId: string, keepToken: string | undefined): void {
+  if (!keepToken) {
+    store.sqlite.prepare("DELETE FROM sessions WHERE user_id = ?").run(userId);
+    return;
+  }
+  store.sqlite.prepare("DELETE FROM sessions WHERE user_id = ? AND token_hash != ?").run(userId, hashToken(keepToken));
+}
+
 export function destroySession(token: string | undefined): void {
   if (!token) return;
   store.sqlite.prepare("DELETE FROM sessions WHERE token_hash = ?").run(hashToken(token));

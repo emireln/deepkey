@@ -94,6 +94,9 @@ export function createWebPlatform(): PlatformAdapter {
           return null;
         }
       },
+      async changePassword(current, next) {
+        await api("/api/auth/password", { method: "POST", body: JSON.stringify({ current, next }) });
+      },
     },
     clipboard: {
       async write(text) {
@@ -134,6 +137,15 @@ export function createWebPlatform(): PlatformAdapter {
     },
     openExternal(url) {
       window.open(url, "_blank", "noopener,noreferrer");
+    },
+    notifications: {
+      show(title, body) {
+        void (async () => {
+          if (!("Notification" in window)) return;
+          if (Notification.permission === "default") await Notification.requestPermission();
+          if (Notification.permission === "granted") new Notification(title, { body, silent: true });
+        })();
+      },
     },
   };
 }

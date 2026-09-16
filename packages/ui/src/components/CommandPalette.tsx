@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { itemSecret, type CommandId } from "@deepkey/vault-core";
 import { useVault } from "../state/vault.js";
 import { t } from "../i18n/index.js";
-import type { CommandId } from "@deepkey/vault-core";
 
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { engine, lock } = useVault();
+  const { engine, lock, copySecret } = useVault();
   const navigate = useNavigate();
   const [q, setQ] = useState("");
   const [active, setActive] = useState(0);
@@ -32,7 +32,13 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       }
       if (e.key === "Enter") {
         const hit = hits[active];
-        if (hit) go(hit.id, hit.kind);
+        if (!hit) return;
+        if ((e.metaKey || e.ctrlKey) && hit.kind === "item") {
+          e.preventDefault();
+          copyItem(hit.id);
+          return;
+        }
+        go(hit.id, hit.kind);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -41,6 +47,17 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 
   if (!open) return null;
 
+  function copyItem(id: string) {
+    const item = engine.getItem(id);
+    const secret = item ? itemSecret(item) : null;
+    if (!secret) {
+      go(id, "item");
+      return;
+    }
+    onClose();
+    void copySecret(secret);
+  }
+
   function go(id: string, kind: string) {
     onClose();
     if (kind === "command") {
@@ -48,6 +65,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         "new-secret": "/new",
         "new-project": "/projects?new=1",
         "import-env": "/env/import",
+        "compare-env": "/env?compare=1",
         lock: () => lock(),
         generator: "/generator",
         settings: "/settings",
@@ -65,7 +83,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   return (
     <div className="palette-backdrop" onClick={onClose}>
       <div className="palette" onClick={(e) => e.stopPropagation()}>
-        <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("search")} />
+        <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("paletteHint")} />
         <div className="palette-list">
           {hits.map((hit, i) => (
             <button
@@ -76,7 +94,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
               onClick={() => go(hit.id, hit.kind)}
             >
               <span>{hit.title}</span>
-              <span className="cell-muted">{hit.subtitle}</span>
+              <span className="cell-muted">{hit.kind === "item" ? `${hit.subtitle} · ${t("copyValue")}` : hit.subtitle}</span>
             </button>
           ))}
         </div>

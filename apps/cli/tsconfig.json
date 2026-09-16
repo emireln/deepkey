@@ -3,10 +3,11 @@
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist",
-    "noEmit": true,
+    "lib": ["ES2022"],
+    "types": ["node"],
     "declaration": false,
     "declarationMap": false,
-    "types": ["node"]
+    "noEmit": true
   },
   "include": ["src"]
 }

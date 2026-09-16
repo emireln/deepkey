@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { KDF_MIN } from "@deepkey/config";
-import { VaultEngine, MemoryVaultStore, generateSecret } from "./index.js";
+import { inspectBackup, MemoryVaultStore, VaultEngine, generateSecret } from "./index.js";
 
 const PASS = "test-master-password-ok";
 const kdf = { ...KDF_MIN, version: 0x13 };
@@ -83,6 +83,9 @@ describe("vault-core", () => {
     await vault2.importBackup(backup);
     await vault2.unlock(PASS);
     expect(vault2.items()[0]?.notes).toBe("secret text");
+    const info = inspectBackup(backup);
+    expect(info.records).toBeGreaterThan(0);
+    expect(info.displayName).toBe("Dev");
   });
 
   it("rejects a tampered backup", async () => {
@@ -95,7 +98,29 @@ describe("vault-core", () => {
   it("generates secrets locally", () => {
     const a = generateSecret({ kind: "uuid", length: 36, uppercase: true, lowercase: true, numbers: true, symbols: false, avoidAmbiguous: false });
     const b = generateSecret({ kind: "password", length: 32, uppercase: true, lowercase: true, numbers: true, symbols: true, avoidAmbiguous: true });
+    const phrase = generateSecret({ kind: "passphrase", length: 5, uppercase: false, lowercase: true, numbers: false, symbols: false, avoidAmbiguous: false });
     expect(a).toMatch(/^[0-9a-f-]{36}$/);
     expect(b).toHaveLength(32);
+    expect(phrase.split("-")).toHaveLength(5);
+  });
+
+  it("diffs two environments and exports compose yaml", async () => {
+    const { vault } = await ready();
+    const project = await vault.createProject("App");
+    const left = await vault.createEnvironment(project.id, "Staging");
+    const right = await vault.createEnvironment(project.id, "Production");
+    await vault.createItem({ type: "env_var", name: "SHARED", projectId: project.id, environmentId: left.id, fields: { value: "one" } });
+    await vault.createItem({ type: "env_var", name: "SHARED", projectId: project.id, environmentId: right.id, fields: { value: "two" } });
+    await vault.createItem({ type: "env_var", name: "ONLY_LEFT", projectId: project.id, environmentId: left.id, fields: { value: "x" } });
+    await vault.createItem({ type: "env_var", name: "ONLY_RIGHT", projectId: project.id, environmentId: right.id, fields: { value: "y" } });
+    const diff = vault.diffEnvironments(project.id, left.id, right.id);
+    expect(diff.find((row) => row.key === "SHARED")?.status).toBe("changed");
+    expect(diff.find((row) => row.key === "ONLY_LEFT")?.status).toBe("removed");
+    expect(diff.find((row) => row.key === "ONLY_RIGHT")?.status).toBe("added");
+    const yaml = vault.exportEnv(project.id, right.id, "compose");
+    expect(yaml).toContain("environment:");
+    expect(yaml).toContain("SHARED");
+    expect(vault.verifyMasterPassword(PASS)).toBe(true);
+    expect(vault.verifyMasterPassword("nope-nope-nope-nope")).toBe(false);
   });
 });

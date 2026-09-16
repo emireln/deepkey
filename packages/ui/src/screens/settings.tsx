@@ -1,12 +1,13 @@
 import { AUTO_LOCK_OPTIONS, CLIPBOARD_TIMEOUTS, DATABASE_SCHEMA_VERSION, CRYPTO_FORMAT_VERSION, VAULT_FORMAT_VERSION, TRASH_RETENTION } from "@deepkey/config";
 import { DEFAULT_APP_SETTINGS, type AppSettings } from "@deepkey/types";
+import { inspectBackup } from "@deepkey/vault-core";
 import { scorePassword } from "@deepkey/validation";
 import { useEffect, useState } from "react";
 import { Button, Checkbox, Field, Input, Select } from "../components/controls.js";
 import { SupportButton } from "../components/SupportButton.js";
 import { Dialog, useToast } from "../components/feedback.js";
 import { t } from "../i18n/index.js";
-import { initials } from "../lib/format.js";
+import { formatDate, initials } from "../lib/format.js";
 import { usePlatform } from "../platform/context.js";
 import { useVault } from "../state/vault.js";
 
@@ -31,6 +32,8 @@ export function SettingsScreen({ initial = "general" }: { initial?: Category }) 
   const [dbPath, setDbPath] = useState("");
   const [currentPw, setCurrentPw] = useState("");
   const [nextPw, setNextPw] = useState("");
+  const [loginCurrent, setLoginCurrent] = useState("");
+  const [loginNext, setLoginNext] = useState("");
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [confirmPw, setConfirmPw] = useState("");
 
@@ -167,6 +170,14 @@ export function SettingsScreen({ initial = "general" }: { initial?: Category }) 
                 <Checkbox checked={settings.security.contentProtection} onChange={(v) => patch({ ...settings, security: { ...settings.security, contentProtection: v } })} label={t("contentProtection")} />
               ) : null}
               <Checkbox checked={settings.security.requirePasswordForExport} onChange={(v) => patch({ ...settings, security: { ...settings.security, requirePasswordForExport: v } })} label={t("requirePassword")} />
+              <Checkbox checked={settings.security.notifyExpiring} onChange={(v) => patch({ ...settings, security: { ...settings.security, notifyExpiring: v } })} label={t("notifyExpiring")} />
+              {settings.security.notifyExpiring ? (
+                <Checkbox
+                  checked={settings.security.allowSecretNamesInNotifications}
+                  onChange={(v) => patch({ ...settings, security: { ...settings.security, allowSecretNamesInNotifications: v } })}
+                  label={t("allowNamesInNotifications")}
+                />
+              ) : null}
               {platform.osUnlock ? (
                 <Checkbox
                   checked={settings.security.osUnlockEnabled}
@@ -267,7 +278,43 @@ export function SettingsScreen({ initial = "general" }: { initial?: Category }) 
 
           {cat === "backup" ? (
             <>
-              <Checkbox checked={settings.backup.autoBackup} onChange={(v) => patch({ ...settings, backup: { ...settings.backup, autoBackup: v } })} label="Automatic local backup" />
+              <Checkbox
+                checked={settings.backup.autoBackup}
+                onChange={(v) => patch({ ...settings, backup: { ...settings.backup, autoBackup: v } })}
+                label={t("autoBackup")}
+              />
+              {settings.backup.autoBackup ? (
+                <Field label={t("autoBackupHours")}>
+                  <Select
+                    value={String(settings.backup.autoBackupHours)}
+                    onChange={(e) => patch({ ...settings, backup: { ...settings.backup, autoBackupHours: Number(e.target.value) } })}
+                  >
+                    <option value="6">{t("hours6")}</option>
+                    <option value="12">{t("hours12")}</option>
+                    <option value="24">{t("hours24")}</option>
+                    <option value="48">{t("hours48")}</option>
+                    <option value="168">{t("hoursWeekly")}</option>
+                  </Select>
+                </Field>
+              ) : null}
+              {platform.kind === "desktop" && platform.desktop?.pickBackupDir ? (
+                <Field label={t("autoBackupFolder")}>
+                  <Input readOnly value={settings.backup.autoBackupDir ?? ""} placeholder={t("chooseFolder")} />
+                  <div className="split" style={{ marginTop: 8 }}>
+                    <Button
+                      onClick={async () => {
+                        const dir = await platform.desktop?.pickBackupDir?.();
+                        if (dir) await patch({ ...settings, backup: { ...settings.backup, autoBackupDir: dir } });
+                      }}
+                    >
+                      {t("chooseFolder")}
+                    </Button>
+                  </div>
+                </Field>
+              ) : null}
+              <p className="hint">
+                {t("lastBackup")}: {settings.backup.lastBackupAt ? formatDate(settings.backup.lastBackupAt) : t("neverBackedUp")}
+              </p>
               <div className="split" style={{ marginTop: 16 }}>
                 <Button
                   variant="primary"
@@ -275,6 +322,7 @@ export function SettingsScreen({ initial = "general" }: { initial?: Category }) 
                     const backup = await engine.exportBackup();
                     const bytes = new TextEncoder().encode(JSON.stringify(backup));
                     await platform.files.save("vault.deepkeyvault", bytes, "application/json");
+                    await patch({ ...settings, backup: { ...settings.backup, lastBackupAt: Date.now() } });
                     toast(t("backupCreated"));
                   }}
                 >
@@ -292,6 +340,20 @@ export function SettingsScreen({ initial = "general" }: { initial?: Category }) 
                 >
                   {t("importBackup")}
                 </Button>
+                <Button
+                  onClick={async () => {
+                    const file = await platform.files.open([{ name: "DeepKey vault", extensions: ["deepkeyvault", "json"] }]);
+                    if (!file) return;
+                    try {
+                      inspectBackup(JSON.parse(new TextDecoder().decode(file.bytes)));
+                      toast(t("backupValid"));
+                    } catch {
+                      toast(t("backupInvalid"));
+                    }
+                  }}
+                >
+                  {t("verifyBackup")}
+                </Button>
               </div>
               <p className="hint" style={{ marginTop: 12 }}>
                 {t("noRecovery")}
@@ -302,7 +364,34 @@ export function SettingsScreen({ initial = "general" }: { initial?: Category }) 
           {cat === "web" && platform.kind === "web" ? (
             <>
               <p className="hint">{t("authSub")}</p>
+              {platform.auth?.changePassword ? (
+                <>
+                  <h2 className="section-title">{t("changeLoginPassword")}</h2>
+                  <Field label={t("currentLoginPassword")}>
+                    <Input type="password" value={loginCurrent} onChange={(e) => setLoginCurrent(e.target.value)} />
+                  </Field>
+                  <Field label={t("newLoginPassword")}>
+                    <Input type="password" value={loginNext} onChange={(e) => setLoginNext(e.target.value)} />
+                  </Field>
+                  <Button
+                    disabled={loginCurrent.length < 10 || loginNext.length < 10}
+                    onClick={async () => {
+                      try {
+                        await platform.auth?.changePassword?.(loginCurrent, loginNext);
+                        setLoginCurrent("");
+                        setLoginNext("");
+                        toast(t("loginPasswordChanged"));
+                      } catch {
+                        toast(t("wrongLoginPassword"));
+                      }
+                    }}
+                  >
+                    {t("changeLoginPassword")}
+                  </Button>
+                </>
+              ) : null}
               <Button
+                style={{ marginTop: 16 }}
                 onClick={async () => {
                   await platform.auth?.logout();
                   window.location.reload();
@@ -317,6 +406,12 @@ export function SettingsScreen({ initial = "general" }: { initial?: Category }) 
             <>
               <Checkbox checked={settings.ui.launchAtStartup} onChange={(v) => patch({ ...settings, ui: { ...settings.ui, launchAtStartup: v } })} label={t("launchAtStartup")} />
               <Checkbox checked={settings.ui.trayEnabled} onChange={(v) => patch({ ...settings, ui: { ...settings.ui, trayEnabled: v } })} label={t("tray")} />
+              <Checkbox
+                checked={settings.ui.globalShortcutEnabled}
+                onChange={(v) => patch({ ...settings, ui: { ...settings.ui, globalShortcutEnabled: v } })}
+                label={t("globalShortcut")}
+              />
+              <p className="hint">{t("globalShortcutHint")}</p>
             </>
           ) : null}
 
@@ -350,10 +445,12 @@ export function SettingsScreen({ initial = "general" }: { initial?: Category }) 
             <div className="list">
               {[
                 ["Ctrl/Cmd + K", t("search")],
+                [t("shortcutGlobal"), t("globalShortcut")],
                 ["Ctrl/Cmd + N", t("newSecret")],
                 ["Ctrl/Cmd + Shift + N", t("newProject")],
                 ["Ctrl/Cmd + L", t("lockVault")],
                 ["Ctrl/Cmd + ,", t("settings")],
+                [t("shortcutCopy"), t("copyValue")],
                 ["Esc", t("close")],
               ].map(([k, v]) => (
                 <div key={k} className="list-row" style={{ gridTemplateColumns: "1fr 1fr" }}>

@@ -193,3 +193,41 @@ export function envEntriesToMap(entries: EnvEntry[]): Map<string, EnvEntry> {
   }
   return map;
 }
+
+function yamlName(value: string): string {
+  const cleaned = value
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 63);
+  return cleaned || "deepkey";
+}
+
+export function serializeCompose(entries: EnvEntry[]): string {
+  const lines = ["environment:"];
+  for (const entry of entries) {
+    if (!entry.enabled) continue;
+    lines.push(`  ${entry.key}: ${JSON.stringify(entry.value)}`);
+  }
+  if (lines.length === 1) lines.push("  {}");
+  return `${lines.join("\n")}\n`;
+}
+
+export function serializeKubernetesSecret(entries: EnvEntry[], name = "deepkey"): string {
+  const lines = [
+    "apiVersion: v1",
+    "kind: Secret",
+    "metadata:",
+    `  name: ${yamlName(name)}`,
+    "type: Opaque",
+    "stringData:",
+  ];
+  let count = 0;
+  for (const entry of entries) {
+    if (!entry.enabled) continue;
+    lines.push(`  ${entry.key}: ${JSON.stringify(entry.value)}`);
+    count += 1;
+  }
+  if (!count) lines.push("  {}");
+  return `${lines.join("\n")}\n`;
+}

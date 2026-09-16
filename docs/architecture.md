@@ -6,6 +6,7 @@ pnpm monorepo. Two apps on top of the same core.
 apps/desktop    Electron main + preload + renderer
 apps/web        Vite React shell
 apps/server     Self-hosted Hono/Node API + static UI
+apps/cli        Local unlock + print
 packages/ui     Shared interface
 packages/vault-core
 packages/crypto
@@ -21,7 +22,7 @@ assets/logo.svg
 
 I wanted one vault engine, not two products that drift.
 
-`packages/vault-core` owns behavior: create / unlock / lock, items, projects, environments, `.env` import/export, history, trash, backups, search, generator.
+`packages/vault-core` owns behavior: create / unlock / lock, items, projects, environments, `.env` import/export/diff, history, trash, backups, search, generator.
 
 `packages/crypto` is only keys and envelopes. `packages/database` is only SQLite. The UI never talks SQL. The server never sees plaintext records.
 
@@ -74,13 +75,15 @@ Associated data keeps DEK wraps, records, and attachments from being swapped int
 - One vault per install / instance.
 - Projects and environments group items.
 - Item types: api key, token, credential, env var, database, ssh key, certificate, webhook, note, file, custom.
-- `.env` files are first-class: parse, import with skip/keep/create, export, raw editor.
+- `.env` files are first-class: parse, import with skip/keep/create, export (`.env`, Compose, Kubernetes Secret), compare two environments, raw editor.
 - Trash is soft delete until retention or empty.
 - History is a capped list of previous ciphertext versions, not a git repo.
 
 ## Search
 
-Unlock, decrypt into memory, filter there. Ctrl/Cmd+K is the command palette.
+Unlock, decrypt into memory, filter there. Ctrl/Cmd+K is the command palette. `type:ssh` narrows the list. Ctrl/Cmd+Enter copies the selected secret.
+
+The desktop app can also register Ctrl/Cmd+Shift+K as a global shortcut so search works while DeepKey is in the background.
 
 I did not build a server-side plaintext index. That would undo the point.
 

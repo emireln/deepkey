@@ -30,9 +30,13 @@ That file is the real secrets, sitting in a text file. Same as copying `.env` ou
 
 ## Automatic local backups
 
-Optional. Encrypted `.deepkeyvault` files written to a folder you pick. They are not uploaded.
+Optional. Encrypted `.deepkeyvault` files written on a timer.
+
+Desktop writes into a folder you pick, or `%APPDATA%\DeepKey\backups` (and the macOS/Linux equivalent). It keeps the last 14 files. Web cannot write a folder quietly, so you get a banner on Overview when a backup is due and you save the file yourself.
 
 If you turn this on, that folder is now part of your threat model. Anyone with the files still needs the master password. Anyone with the files **and** the password has the vault.
+
+Settings → Backup → Verify backup file checks the envelope without importing it.
 
 ## Moving between desktop and web
 

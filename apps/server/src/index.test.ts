@@ -13,6 +13,11 @@ describe("server security", () => {
     expect(res.status).toBe(401);
   });
 
+  it("rejects unauthenticated password change", async () => {
+    const res = await app.request("/api/auth/password", { method: "POST", body: "{}" });
+    expect(res.status).toBe(401);
+  });
+
   it("rejects path-like pref keys", async () => {
     const res = await app.request("/api/prefs/../secret", { method: "GET" });
     expect([400, 401, 404]).toContain(res.status);

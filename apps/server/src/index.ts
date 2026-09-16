@@ -12,7 +12,9 @@ import {
   cookieOptions,
   createSession,
   createUser,
+  changeUserPassword,
   dbPath,
+  destroyOtherSessions,
   destroySession,
   logError,
   logInfo,
@@ -143,6 +145,26 @@ app.get("/api/auth/me", (c) => {
   return c.json({ user: { username: user.username } });
 });
 
+app.post("/api/auth/password", async (c) => {
+  const user = sessionUser(getCookie(c, COOKIE));
+  if (!user) return c.json({ error: "Unauthorized." }, 401);
+  const ip = c.req.header("x-forwarded-for")?.split(",")[0]?.trim() || "local";
+  if (rateLimited(`${ip}:pw`)) return c.json({ error: "Too many attempts." }, 429);
+  const body = await c.req.json().catch(() => ({}));
+  const current = String((body as { current?: string }).current ?? "");
+  const next = String((body as { next?: string }).next ?? "");
+  try {
+    const ok = changeUserPassword(user.id, current, next);
+    recordAttempt(`${ip}:pw`, ok);
+    if (!ok) return c.json({ error: "Invalid credentials." }, 401);
+    destroyOtherSessions(user.id, getCookie(c, COOKIE));
+    return c.json({ ok: true });
+  } catch (err) {
+    recordAttempt(`${ip}:pw`, false);
+    return c.json({ error: err instanceof Error ? err.message : "Could not change password." }, 400);
+  }
+});
+
 app.use("/api/vault/*", async (c, next) => {
   const user = sessionUser(getCookie(c, COOKIE));
   if (!user) return c.json({ error: "Unauthorized." }, 401);
@@ -223,17 +245,19 @@ app.get("/api/meta/db-path", (c) => {
 
 app.get("/api/prefs/:key", (c) => {
   const key = c.req.param("key");
-  if (!/^[a-z0-9._-]+$/i.test(key)) return c.json({ error: "Invalid key." }, 400);
+  if (!/^[a-z0-9._-]+$/i.test(key) || key.includes("..")) return c.json({ error: "Invalid key." }, 400);
   return c.json({ value: store.getKv(key) });
 });
 
 app.put("/api/prefs/:key", async (c) => {
   const key = c.req.param("key");
-  if (!/^[a-z0-9._-]+$/i.test(key)) return c.json({ error: "Invalid key." }, 400);
+  if (!/^[a-z0-9._-]+$/i.test(key) || key.includes("..")) return c.json({ error: "Invalid key." }, 400);
   const body = await c.req.json();
   store.setKv(key, String(body.value ?? ""));
   return c.json({ ok: true });
 });
+
+app.all("/api/*", (c) => c.json({ error: "Not found." }, 404));
 
 const webDist = path.resolve(__dirname, "../../web/dist");
 if (fs.existsSync(webDist)) {

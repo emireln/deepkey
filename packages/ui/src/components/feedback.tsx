@@ -1,4 +1,6 @@
-import { createContext, createElement, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, createElement, useCallback, useContext, useRef, useState, type ReactNode } from "react";
+import { t } from "../i18n/index.js";
+import { Button, Field, Input } from "./controls.js";
 
 const ToastContext = createContext<(message: string) => void>(() => undefined);
 
@@ -37,11 +39,59 @@ export function Dialog(props: {
         <p>{props.body}</p>
         <div className="dialog-actions">
           <button type="button" className="btn" onClick={props.onCancel}>
-            Cancel
+            {t("cancel")}
           </button>
           <button type="button" className={props.danger ? "btn danger-solid" : "btn primary"} onClick={props.onConfirm}>
             {props.confirm}
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function PasswordPrompt(props: {
+  title: string;
+  body: string;
+  confirm: string;
+  error?: string | null;
+  onCancel: () => void;
+  onConfirm: (password: string) => void | Promise<void>;
+}) {
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function submit() {
+    setBusy(true);
+    try {
+      await props.onConfirm(password);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="dialog-backdrop" onClick={props.onCancel} role="presentation">
+      <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="pw-dlg-title" onClick={(e) => e.stopPropagation()}>
+        <h2 id="pw-dlg-title">{props.title}</h2>
+        <p>{props.body}</p>
+        <Field label={t("confirmMaster")}>
+          <Input
+            type="password"
+            value={password}
+            autoFocus
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && password) void submit();
+            }}
+          />
+        </Field>
+        {props.error ? <p className="error-text">{props.error}</p> : null}
+        <div className="dialog-actions">
+          <Button onClick={props.onCancel}>{t("cancel")}</Button>
+          <Button variant="primary" disabled={!password || busy} onClick={() => void submit()}>
+            {props.confirm}
+          </Button>
         </div>
       </div>
     </div>

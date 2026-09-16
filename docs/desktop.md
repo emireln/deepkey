@@ -47,6 +47,14 @@ This is "I already logged into this OS account" unlock, not a second crypto desi
 
 Copy a secret, and DeepKey can clear the clipboard later **if** it still contains that secret. If you copied something else, it stays.
 
+## Global shortcut
+
+Optional. Ctrl/Cmd+Shift+K focuses the window and opens search. Registered with Electron `globalShortcut`. Turn it off if another app already owns that chord.
+
+## Automatic backups
+
+When enabled, the renderer exports an encrypted `.deepkeyvault` and the main process writes it under the backups folder. Ciphertext only. The master password is not in that file in the clear.
+
 ## Network
 
 No telemetry. Vault features do not need the network.

@@ -17,7 +17,15 @@ export function GeneratorScreen() {
     } catch {
       return value;
     }
-  }, [opts]);
+  }, [opts, value]);
+
+  function regen(next = opts) {
+    try {
+      setValue(generateSecret(next));
+    } catch {
+      setValue(preview);
+    }
+  }
 
   return (
     <div>
@@ -27,9 +35,15 @@ export function GeneratorScreen() {
           <Field label={t("type")}>
             <Select
               value={opts.kind}
-              onChange={(e) => setOpts({ ...opts, kind: e.target.value as GeneratorOptions["kind"] })}
+              onChange={(e) => {
+                const kind = e.target.value as GeneratorOptions["kind"];
+                const next = { ...opts, kind, length: kind === "passphrase" ? 6 : opts.kind === "passphrase" ? 24 : opts.length };
+                setOpts(next);
+                regen(next);
+              }}
             >
               <option value="password">Password</option>
+              <option value="passphrase">{t("passphrase")}</option>
               <option value="token">API Token</option>
               <option value="hex">Hex</option>
               <option value="base64">Base64</option>
@@ -37,11 +51,11 @@ export function GeneratorScreen() {
             </Select>
           </Field>
           {opts.kind !== "uuid" ? (
-            <Field label={t("length")}>
+            <Field label={opts.kind === "passphrase" ? t("words") : t("length")}>
               <Input
                 type="number"
-                min={8}
-                max={256}
+                min={opts.kind === "passphrase" ? 3 : 8}
+                max={opts.kind === "passphrase" ? 12 : 256}
                 value={opts.length}
                 onChange={(e) => setOpts({ ...opts, length: Number(e.target.value) })}
               />
@@ -62,25 +76,15 @@ export function GeneratorScreen() {
             <Input mono readOnly value={value} />
           </Field>
           <div className="split">
-            <Button
-              onClick={() => {
-                try {
-                  setValue(generateSecret(opts));
-                } catch {
-                  setValue(preview);
-                }
-              }}
-            >
-              {t("regenerate")}
-            </Button>
+            <Button onClick={() => regen()}>{t("regenerate")}</Button>
             <Button onClick={() => copySecret(value)}>{t("copy")}</Button>
             <Button
               variant="primary"
               onClick={async () => {
                 const item = await engine.createItem({
-                  type: opts.kind === "password" ? "credential" : "token",
-                  name: opts.kind === "password" ? "Generated password" : "Generated token",
-                  fields: opts.kind === "password" ? { password: value } : { value },
+                  type: opts.kind === "password" || opts.kind === "passphrase" ? "credential" : "token",
+                  name: opts.kind === "passphrase" ? "Generated passphrase" : opts.kind === "password" ? "Generated password" : "Generated token",
+                  fields: opts.kind === "password" || opts.kind === "passphrase" ? { password: value } : { value },
                 });
                 refresh();
                 navigate(`/vault/${item.id}`);

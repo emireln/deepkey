@@ -114,6 +114,17 @@ On Windows/macOS, optional OS unlock stores the DEK (never the master password) 
 
 Details: [docs/desktop.md](docs/desktop.md)
 
+## CLI
+
+Unlock the local sqlite vault on this machine and print. Same engine as the apps.
+
+```bash
+pnpm --filter @deepkey/cli start -- env Personal Production
+pnpm --filter @deepkey/cli start -- get OPENAI_API_KEY
+```
+
+Password from `DEEPKEY_MASTER_PASSWORD` or a prompt. Details: [docs/cli.md](docs/cli.md)
+
 ## Tests
 
 ```bash
@@ -134,6 +145,7 @@ The heart button in the sidebar opens [buymeacoffee.com/emireln](https://buymeac
 - [Architecture](docs/architecture.md)
 - [Security](docs/security.md)
 - [Backup](docs/backup.md)
+- [CLI](docs/cli.md)
 - [Self-host](docs/self-host.md)
 - [Desktop](docs/desktop.md)
 - [Notes for contributors / agents](AGENTS.md)

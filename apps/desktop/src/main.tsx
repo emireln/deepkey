@@ -61,6 +61,7 @@ function createDesktopPlatform(): PlatformAdapter {
       onSleep: (cb) => window.deepkey.on("system:sleep", cb),
       onLock: (cb) => window.deepkey.on("system:lock", cb),
       onResume: (cb) => window.deepkey.on("system:resume", cb),
+      onPalette: (cb) => window.deepkey.on("palette", cb),
     },
     osUnlock: {
       available: () => invoke("osUnlock:available") as Promise<boolean>,
@@ -82,6 +83,14 @@ function createDesktopPlatform(): PlatformAdapter {
     desktop: {
       setLaunchAtStartup: (enabled) => invoke("desktop:setLaunchAtStartup", enabled) as Promise<void>,
       setTray: (enabled) => invoke("desktop:setTray", enabled) as Promise<void>,
+      setGlobalShortcut: (enabled) => invoke("desktop:setGlobalShortcut", enabled) as Promise<boolean>,
+      writeAutoBackup: (bytes, dir) => invoke("backup:writeAuto", bytes, dir ?? null) as Promise<string>,
+      pickBackupDir: () => invoke("backup:pickDir") as Promise<string | null>,
+    },
+    notifications: {
+      show(title, body) {
+        void invoke("notifications:show", title, body);
+      },
     },
     openExternal(url) {
       void invoke("app:openExternal", url);

@@ -5,10 +5,12 @@ import { CommandPalette } from "../components/CommandPalette.js";
 import { Sidebar } from "../components/Sidebar.js";
 import { Titlebar } from "../components/Titlebar.js";
 import { t } from "../i18n/index.js";
+import { usePlatform } from "../platform/context.js";
 import { useVault } from "../state/vault.js";
 
 export function AppShell() {
   const { settings, saveSettings, blurSensitive, unlocked } = useVault();
+  const platform = usePlatform();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(settings.ui.sidebar === "collapsed");
   const [drawer, setDrawer] = useState(false);
@@ -17,6 +19,10 @@ export function AppShell() {
   useEffect(() => {
     setCollapsed(settings.ui.sidebar === "collapsed");
   }, [settings.ui.sidebar]);
+
+  useEffect(() => {
+    return platform.window?.onPalette?.(() => setPalette(true));
+  }, [platform]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

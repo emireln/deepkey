@@ -2,9 +2,9 @@ import { Plus } from "@phosphor-icons/react";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { parseEnv } from "@deepkey/env-parser";
-import type { EnvImportDecision } from "@deepkey/types";
+import type { EnvExportFormat, EnvImportDecision } from "@deepkey/types";
 import { Button, EmptyState, Field, Input, SecretField, Select, Textarea } from "../components/controls.js";
-import { Dialog, useToast } from "../components/feedback.js";
+import { Dialog, PasswordPrompt, useToast } from "../components/feedback.js";
 import { t } from "../i18n/index.js";
 import { bytesFromText } from "../lib/format.js";
 import { usePlatform } from "../platform/context.js";
@@ -198,12 +198,20 @@ export function EnvFilesScreen() {
   void tick;
   const navigate = useNavigate();
   const toast = useToast();
+  const [params] = useSearchParams();
   const [projectId, setProjectId] = useState(engine.projects()[0]?.id ?? "");
   const [envId, setEnvId] = useState("");
+  const [otherEnvId, setOtherEnvId] = useState("");
+  const [comparing, setComparing] = useState(params.get("compare") === "1");
+  const [hideSame, setHideSame] = useState(true);
   const [mode, setMode] = useState<"structured" | "raw">("structured");
   const [raw, setRaw] = useState("");
   const [exportOpen, setExportOpen] = useState(false);
   const [filename, setFilename] = useState(".env");
+  const [exportFormat, setExportFormat] = useState<EnvExportFormat>("dotenv");
+  const [pwOpen, setPwOpen] = useState(false);
+  const [pwError, setPwError] = useState<string | null>(null);
+  const [pendingPlaintext, setPendingPlaintext] = useState<"copy" | "export" | null>(null);
   const platform = usePlatform();
   const envs = projectId ? engine.environments(projectId) : [];
   useEffect(() => {
@@ -212,8 +220,18 @@ export function EnvFilesScreen() {
   useEffect(() => {
     if (projectId && envId) setRaw(engine.exportEnv(projectId, envId));
   }, [projectId, envId, tick]);
+  useEffect(() => {
+    if (!comparing) return;
+    const other = envs.find((env) => env.id !== envId);
+    if (other && !otherEnvId) setOtherEnvId(other.id);
+  }, [comparing, envs, envId, otherEnvId]);
   const parsed = useMemo(() => parseEnv(raw), [raw]);
   const items = projectId && envId ? engine.envItems(projectId, envId) : [];
+  const diff =
+    comparing && projectId && envId && otherEnvId && envId !== otherEnvId
+      ? engine.diffEnvironments(projectId, envId, otherEnvId)
+      : [];
+  const visibleDiff = hideSame ? diff.filter((row) => row.status !== "same") : diff;
 
   async function applyRaw() {
     if (!projectId || !envId) return;
@@ -222,20 +240,46 @@ export function EnvFilesScreen() {
     toast(t("saved"));
   }
 
+  function payloadForFormat() {
+    return engine.exportEnv(projectId, envId, exportFormat);
+  }
+
+  function exportFilename() {
+    if (exportFormat === "compose") return "compose.env.yaml";
+    if (exportFormat === "kubernetes") return "secret.yaml";
+    return filename;
+  }
+
+  async function finishPlaintext(kind: "copy" | "export") {
+    const text = payloadForFormat();
+    if (kind === "copy") copySecret(text);
+    else await platform.files.save(exportFilename(), bytesFromText(text), "text/plain");
+    setExportOpen(false);
+    setPwOpen(false);
+    setPendingPlaintext(null);
+  }
+
+  function requestPlaintext(kind: "copy" | "export") {
+    if (settings.security.requirePasswordForExport) {
+      setPendingPlaintext(kind);
+      setPwError(null);
+      setPwOpen(true);
+      return;
+    }
+    void finishPlaintext(kind);
+  }
+
   return (
     <div>
       <div className="page-head">
         <h1 className="page-title">{t("envFiles")}</h1>
         <div className="split">
+          <Button className={comparing ? "is-on" : ""} onClick={() => setComparing((v) => !v)}>
+            {t("compareEnvs")}
+          </Button>
           <Button onClick={() => navigate("/env/import")}>{t("importEnv")}</Button>
           <Button onClick={() => setExportOpen(true)}>{t("exportEnv")}</Button>
-          <Button
-            onClick={() => {
-              copySecret(raw);
-            }}
-          >
-            {t("copyEnv")}
-          </Button>
+          <Button onClick={() => requestPlaintext("copy")}>{t("copyEnv")}</Button>
         </div>
       </div>
       <div className="toolbar">
@@ -253,71 +297,151 @@ export function EnvFilesScreen() {
             </option>
           ))}
         </Select>
-        <Button onClick={() => setMode("structured")}>{t("structured")}</Button>
-        <Button onClick={() => setMode("raw")}>{t("raw")}</Button>
-        {mode === "raw" ? (
-          <Button variant="primary" onClick={applyRaw}>
-            {t("save")}
-          </Button>
-        ) : (
-          <Button variant="primary" onClick={() => navigate(`/new?type=env_var&project=${projectId}&env=${envId}`)}>
-            {t("addVariable")}
-          </Button>
-        )}
-      </div>
-      {parsed.duplicates.length ? <p className="error-text">{t("duplicateKey")}: {parsed.duplicates.join(", ")}</p> : null}
-      {mode === "raw" ? (
-        <Suspense fallback={<p className="hint">{t("loading")}</p>}>
-          <EnvEditor value={raw} onChange={setRaw} duplicates={parsed.duplicates} />
-        </Suspense>
-      ) : items.length ? (
-        <div className="list">
-          {items.map((item) => (
-            <div key={item.id} className="list-row" style={{ gridTemplateColumns: "1fr 1.6fr auto" }}>
-              <button type="button" className="btn ghost" onClick={() => navigate(`/vault/${item.id}`)}>
-                {item.name}
-              </button>
-              <SecretField value={item.fields.value ?? ""} readOnly revealMs={settings.security.revealMs} onCopy={copySecret} />
-              <span />
-            </div>
-          ))}
-        </div>
-      ) : (
-        <EmptyState
-          title={t("noSecrets")}
-          actions={
-            <>
+        {comparing ? (
+          <Select value={otherEnvId} onChange={(e) => setOtherEnvId(e.target.value)}>
+            {envs
+              .filter((env) => env.id !== envId)
+              .map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.name}
+                </option>
+              ))}
+          </Select>
+        ) : null}
+        {!comparing ? (
+          <>
+            <Button className={mode === "structured" ? "is-on" : ""} onClick={() => setMode("structured")}>
+              {t("structured")}
+            </Button>
+            <Button className={mode === "raw" ? "is-on" : ""} onClick={() => setMode("raw")}>
+              {t("raw")}
+            </Button>
+            {mode === "raw" ? (
+              <Button variant="primary" onClick={applyRaw}>
+                {t("save")}
+              </Button>
+            ) : (
               <Button variant="primary" onClick={() => navigate(`/new?type=env_var&project=${projectId}&env=${envId}`)}>
                 {t("addVariable")}
               </Button>
-              <Button onClick={() => navigate("/env/import")}>{t("importEnv")}</Button>
-            </>
-          }
-        />
+            )}
+          </>
+        ) : (
+          <Button className={hideSame ? "is-on" : ""} onClick={() => setHideSame((v) => !v)}>
+            {t("hideSame")}
+          </Button>
+        )}
+      </div>
+      {comparing ? (
+        visibleDiff.length ? (
+          <div className="list">
+            <div className="list-row list-head" style={{ gridTemplateColumns: "1.2fr 0.8fr 1fr 1fr" }}>
+              <span>{t("key")}</span>
+              <span>{t("type")}</span>
+              <span>{envs.find((e) => e.id === envId)?.name ?? t("environment")}</span>
+              <span>{envs.find((e) => e.id === otherEnvId)?.name ?? t("environment")}</span>
+            </div>
+            {visibleDiff.map((row) => (
+              <div key={row.key} className="list-row" style={{ gridTemplateColumns: "1.2fr 0.8fr 1fr 1fr" }}>
+                <span>{row.key}</span>
+                <span className={`diff-tag ${row.status}`}>
+                  {row.status === "added" ? t("diffAdded") : row.status === "removed" ? t("diffRemoved") : row.status === "changed" ? t("diffChanged") : t("same")}
+                </span>
+                <span className="cell-muted mono">{row.left ? "••••" : "—"}</span>
+                <span className="cell-muted mono">{row.right ? "••••" : "—"}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyState title={t("noDiff")} />
+        )
+      ) : (
+        <>
+          {parsed.duplicates.length ? (
+            <p className="error-text">
+              {t("duplicateKey")}: {parsed.duplicates.join(", ")}
+            </p>
+          ) : null}
+          {mode === "raw" ? (
+            <Suspense fallback={<p className="hint">{t("loading")}</p>}>
+              <EnvEditor value={raw} onChange={setRaw} duplicates={parsed.duplicates} />
+            </Suspense>
+          ) : items.length ? (
+            <div className="list">
+              {items.map((item) => (
+                <div key={item.id} className="list-row" style={{ gridTemplateColumns: "1fr 1.6fr auto" }}>
+                  <button type="button" className="btn ghost" onClick={() => navigate(`/vault/${item.id}`)}>
+                    {item.name}
+                  </button>
+                  <SecretField value={item.fields.value ?? ""} readOnly revealMs={settings.security.revealMs} onCopy={copySecret} />
+                  <span />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              title={t("noSecrets")}
+              actions={
+                <>
+                  <Button variant="primary" onClick={() => navigate(`/new?type=env_var&project=${projectId}&env=${envId}`)}>
+                    {t("addVariable")}
+                  </Button>
+                  <Button onClick={() => navigate("/env/import")}>{t("importEnv")}</Button>
+                </>
+              }
+            />
+          )}
+        </>
       )}
       {exportOpen ? (
-        <Dialog
+        <div className="dialog-backdrop" role="presentation" onClick={() => setExportOpen(false)}>
+          <div className="dialog" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+            <h2>{t("confirmExport")}</h2>
+            <p>{t("plaintextWarning")}</p>
+            <Field label={t("exportFormat")}>
+              <Select value={exportFormat} onChange={(e) => setExportFormat(e.target.value as EnvExportFormat)}>
+                <option value="dotenv">{t("formatDotenv")}</option>
+                <option value="compose">{t("formatCompose")}</option>
+                <option value="kubernetes">{t("formatKubernetes")}</option>
+              </Select>
+            </Field>
+            {exportFormat === "dotenv" ? (
+              <Field label="Filename">
+                <Select value={filename} onChange={(e) => setFilename(e.target.value)}>
+                  <option>.env</option>
+                  <option>.env.local</option>
+                  <option>.env.development</option>
+                  <option>.env.production</option>
+                </Select>
+              </Field>
+            ) : null}
+            <div className="dialog-actions">
+              <Button onClick={() => setExportOpen(false)}>{t("cancel")}</Button>
+              <Button variant="primary" onClick={() => requestPlaintext("export")}>
+                {t("export")}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {pwOpen ? (
+        <PasswordPrompt
           title={t("confirmExport")}
-          body={t("plaintextWarning")}
+          body={t("confirmPasswordExport")}
           confirm={t("export")}
-          onCancel={() => setExportOpen(false)}
-          onConfirm={async () => {
-            await platform.files.save(filename, bytesFromText(raw), "text/plain");
-            setExportOpen(false);
+          error={pwError}
+          onCancel={() => {
+            setPwOpen(false);
+            setPendingPlaintext(null);
+          }}
+          onConfirm={async (password) => {
+            if (!engine.verifyMasterPassword(password)) {
+              setPwError(t("wrongPassword"));
+              return;
+            }
+            if (pendingPlaintext) await finishPlaintext(pendingPlaintext);
           }}
         />
-      ) : null}
-      {exportOpen ? (
-        <div style={{ maxWidth: 280, marginTop: 12 }}>
-          <Field label="Filename">
-            <Select value={filename} onChange={(e) => setFilename(e.target.value)}>
-              <option>.env</option>
-              <option>.env.local</option>
-              <option>.env.development</option>
-              <option>.env.production</option>
-            </Select>
-          </Field>
-        </div>
       ) : null}
     </div>
   );

@@ -62,6 +62,9 @@ export function VaultProvider({ children }: { children: ReactNode }) {
             if (platform.desktop) {
               void platform.desktop.setTray(parsed.ui.trayEnabled);
               void platform.desktop.setLaunchAtStartup(parsed.ui.launchAtStartup);
+              if (platform.desktop.setGlobalShortcut) {
+                void platform.desktop.setGlobalShortcut(parsed.ui.globalShortcutEnabled);
+              }
             }
           }
         } catch {
@@ -99,6 +102,9 @@ export function VaultProvider({ children }: { children: ReactNode }) {
       if (platform.desktop) {
         await platform.desktop.setLaunchAtStartup(next.ui.launchAtStartup);
         await platform.desktop.setTray(next.ui.trayEnabled);
+        if (platform.desktop.setGlobalShortcut) {
+          await platform.desktop.setGlobalShortcut(next.ui.globalShortcutEnabled);
+        }
       }
     },
     [platform],
@@ -231,6 +237,52 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [lock]);
+
+  useEffect(() => {
+    if (!unlocked) return;
+    let cancelled = false;
+    const runBackup = async () => {
+      const backup = settings.backup;
+      if (!backup.autoBackup || !platform.desktop?.writeAutoBackup) return;
+      const interval = Math.max(1, backup.autoBackupHours) * 60 * 60 * 1000;
+      if (backup.lastBackupAt && Date.now() - backup.lastBackupAt < interval) return;
+      const file = await engineRef.current.exportBackup();
+      const bytes = new TextEncoder().encode(JSON.stringify(file));
+      await platform.desktop.writeAutoBackup(bytes, backup.autoBackupDir);
+      if (cancelled) return;
+      await saveSettings({ ...settings, backup: { ...settings.backup, lastBackupAt: Date.now() } });
+      toast(t("backupWritten"));
+    };
+    void runBackup();
+    const id = window.setInterval(() => void runBackup(), 30 * 60 * 1000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [unlocked, settings.backup.autoBackup, settings.backup.autoBackupHours, settings.backup.autoBackupDir, platform, saveSettings, toast, settings]);
+
+  useEffect(() => {
+    if (!unlocked || !settings.security.notifyExpiring || !platform.notifications) return;
+    const items = engineRef.current.expiringSoon();
+    if (!items.length) return;
+    let cancelled = false;
+    void (async () => {
+      const day = new Date().toISOString().slice(0, 10);
+      const seen = await platform.prefs.get("expiryNoticeDay");
+      if (cancelled || seen === day) return;
+      await platform.prefs.set("expiryNoticeDay", day);
+      const body = settings.security.allowSecretNamesInNotifications
+        ? items
+            .slice(0, 3)
+            .map((item) => item.name)
+            .join(", ")
+        : t("expiryNoticeBody");
+      platform.notifications?.show(t("expiryNoticeTitle"), body);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [unlocked, settings.security.notifyExpiring, settings.security.allowSecretNamesInNotifications, platform, tick]);
 
   const value = useMemo<VaultContextValue>(
     () => ({

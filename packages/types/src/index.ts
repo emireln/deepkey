@@ -177,6 +177,8 @@ export interface SecuritySettings {
 export interface BackupSettings {
   autoBackup: boolean;
   autoBackupHours: number;
+  autoBackupDir: string | null;
+  lastBackupAt: number | null;
 }
 
 export interface AppSettings {
@@ -206,14 +208,24 @@ export interface EnvImportDecision {
   action: "create" | "replace" | "keep" | "skip";
 }
 
+export type GeneratorKind = "password" | "token" | "hex" | "base64" | "uuid" | "passphrase";
+export type EnvExportFormat = "dotenv" | "compose" | "kubernetes";
+
 export interface GeneratorOptions {
-  kind: "password" | "token" | "hex" | "base64" | "uuid";
+  kind: GeneratorKind;
   length: number;
   uppercase: boolean;
   lowercase: boolean;
   numbers: boolean;
   symbols: boolean;
   avoidAmbiguous: boolean;
+}
+
+export interface EnvDiffRow {
+  key: string;
+  status: "added" | "removed" | "changed" | "same";
+  left: string | null;
+  right: string | null;
 }
 
 export interface BackupFile {
@@ -261,6 +273,8 @@ export const DEFAULT_SECURITY_SETTINGS: SecuritySettings = {
 export const DEFAULT_BACKUP_SETTINGS: BackupSettings = {
   autoBackup: false,
   autoBackupHours: 24,
+  autoBackupDir: null,
+  lastBackupAt: null,
 };
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {

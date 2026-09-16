@@ -31,6 +31,10 @@ const ALLOWED = new Set([
   "osUnlock:clear",
   "desktop:setLaunchAtStartup",
   "desktop:setTray",
+  "desktop:setGlobalShortcut",
+  "backup:writeAuto",
+  "backup:pickDir",
+  "notifications:show",
   "app:openExternal",
 ]);
 
@@ -42,7 +46,7 @@ contextBridge.exposeInMainWorld("deepkey", {
     return ipcRenderer.invoke(channel, ...args);
   },
   on(channel, handler) {
-    if (channel !== "lock" && channel !== "window:blur" && channel !== "window:focus" && channel !== "system:sleep" && channel !== "system:lock" && channel !== "system:resume") {
+    if (channel !== "lock" && channel !== "window:blur" && channel !== "window:focus" && channel !== "system:sleep" && channel !== "system:lock" && channel !== "system:resume" && channel !== "palette") {
       return () => undefined;
     }
     const wrapped = (_event, ...args) => handler(...args);

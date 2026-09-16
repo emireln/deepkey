@@ -1,6 +1,6 @@
 {
   "name": "deepkey",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "private": true,
   "description": "Personal self-hosted encrypted vault for secrets, .env files, keys, and notes.",
   "license": "MIT",
@@ -19,6 +19,7 @@
     "test:security": "pnpm --filter @deepkey/crypto test && pnpm --filter @deepkey/vault-core test && pnpm --filter @deepkey/server test && node scripts/security-check.mjs",
     "typecheck": "pnpm -r --if-present typecheck",
     "e2e": "pnpm --filter @deepkey/web e2e",
+    "cli": "pnpm --filter @deepkey/cli start --",
     "prepare": "node scripts/install-hooks.mjs",
     "bump": "node scripts/bump-version.mjs"
   },

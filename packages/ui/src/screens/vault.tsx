@@ -7,6 +7,7 @@ import { Button, EmptyState, Field, Input, SecretField, Select, Textarea } from 
 import { Dialog } from "../components/feedback.js";
 import { t } from "../i18n/index.js";
 import { expiresLabel, formatDate, typeLabel } from "../lib/format.js";
+import { DEFAULT_GENERATOR, generateSecret, itemSecret } from "@deepkey/vault-core";
 import { usePlatform } from "../platform/context.js";
 import { useVault } from "../state/vault.js";
 
@@ -24,11 +25,16 @@ function PageHeader({ title, sub, actions }: { title: string; sub?: string; acti
 
 export function OverviewScreen() {
   const { engine, settings, tick } = useVault();
+  const navigate = useNavigate();
   void tick;
   const stats = engine.stats();
   const used = engine.recentlyUsed();
   const updated = engine.recentlyUpdated();
   const expiring = engine.expiringSoon();
+  const starred = engine.favorites();
+  const backupDue =
+    settings.backup.autoBackup &&
+    (!settings.backup.lastBackupAt || Date.now() - settings.backup.lastBackupAt >= settings.backup.autoBackupHours * 60 * 60 * 1000);
   const lockLabel =
     settings.security.autoLockMs < 0 ? t("never") : settings.security.autoLockMs === 0 ? t("immediately") : t("lockedAutomatically");
   return (
@@ -50,6 +56,20 @@ export function OverviewScreen() {
           </div>
         </div>
       </div>
+      {backupDue ? (
+        <div className="banner">
+          <p>{t("backupDue")}</p>
+          <Button variant="primary" onClick={() => navigate("/settings")}>
+            {t("backupNow")}
+          </Button>
+        </div>
+      ) : null}
+      {starred.length ? (
+        <section className="section">
+          <h2 className="section-title">{t("favorites")}</h2>
+          <ItemTable items={starred} />
+        </section>
+      ) : null}
       {used.length ? (
         <section className="section">
           <h2 className="section-title">{t("recentlyUsed")}</h2>
@@ -114,11 +134,11 @@ export function ItemTable({ items }: { items: VaultItem[] }) {
             <span className="cell-muted">{env?.name ?? "—"}</span>
             <span className="cell-muted">{formatDate(item.updatedAt)}</span>
             <span className="row-actions" onClick={(e) => e.stopPropagation()}>
-              {item.fields.value ? (
+              {itemSecret(item) ? (
                 <Button
                   variant="icon"
                   aria-label={t("copy")}
-                  onClick={() => copySecret(item.fields.value ?? "")}
+                  onClick={() => copySecret(itemSecret(item) ?? "")}
                 >
                   <Copy size={16} />
                 </Button>
@@ -212,7 +232,9 @@ export function VaultListScreen({ filterType }: { filterType?: ItemType | ItemTy
             </option>
           ))}
         </Select>
-        <Button onClick={() => setFavOnly((v) => !v)}>{t("favorites")}</Button>
+        <Button className={favOnly ? "is-on" : ""} onClick={() => setFavOnly((v) => !v)}>
+          {t("favorites")}
+        </Button>
         <Select value={sort} onChange={(e) => setSort(e.target.value)} aria-label={t("sort")}>
           <option value="updated">{t("updatedNewest")}</option>
           <option value="name">{t("nameAz")}</option>
@@ -548,6 +570,9 @@ export function NewSecretScreen({ editId }: { editId?: string }) {
           {["api_key", "token", "webhook"].includes(type) || template === "connection_string" ? (
             <Field label={t("value")}>
               <Textarea mono value={value} onChange={(e) => setValue(e.target.value)} />
+              <div className="split" style={{ marginTop: 8 }}>
+                <Button onClick={() => setValue(generateSecret(DEFAULT_GENERATOR))}>{t("generate")}</Button>
+              </div>
             </Field>
           ) : null}
           {type === "credential" || (type === "database" && template !== "connection_string") ? (
@@ -557,6 +582,9 @@ export function NewSecretScreen({ editId }: { editId?: string }) {
               </Field>
               <Field label={t("password")}>
                 <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                <div className="split" style={{ marginTop: 8 }}>
+                  <Button onClick={() => setPassword(generateSecret(DEFAULT_GENERATOR))}>{t("generate")}</Button>
+                </div>
               </Field>
             </>
           ) : null}
