@@ -18,8 +18,8 @@ import {
 import { NavLink, useNavigate } from "react-router-dom";
 import { Logo } from "./Logo.js";
 import { SupportButton } from "./SupportButton.js";
+import { UserAvatar } from "./UserAvatar.js";
 import { t } from "../i18n/index.js";
-import { initials } from "../lib/format.js";
 import { useVault } from "../state/vault.js";
 import { usePlatform } from "../platform/context.js";
 import { useEffect, useRef, useState } from "react";
@@ -125,9 +125,7 @@ export function Sidebar({
         </div>
         <div ref={ref} className="sidebar-profile">
           <button type="button" className="profile-btn" onClick={() => setMenu((v) => !v)}>
-            <span className="avatar">
-              {profile?.avatarDataUrl ? <img src={profile.avatarDataUrl} alt="" /> : initials(name)}
-            </span>
+            <UserAvatar src={profile?.avatarDataUrl} label={name} />
             <span className="profile-meta">
               <span className="profile-name">{name}</span>
             </span>

@@ -111,16 +111,20 @@ export function createWebPlatform(): PlatformAdapter {
       supportsClear: false,
     },
     files: {
-      async open() {
+      async open(filters) {
         return new Promise((resolve) => {
           const input = document.createElement("input");
           input.type = "file";
+          if (filters?.length) {
+            input.accept = filters.flatMap((f) => f.extensions.map((ext) => `.${ext}`)).join(",");
+          }
           input.onchange = async () => {
             const file = input.files?.[0];
             if (!file) return resolve(null);
             const buf = new Uint8Array(await file.arrayBuffer());
             resolve({ name: file.name, mime: file.type, bytes: buf });
           };
+          input.oncancel = () => resolve(null);
           input.click();
         });
       },

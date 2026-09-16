@@ -276,4 +276,10 @@ export const ptBR: Messages = {
   backupWritten: "Backup criptografado gravado",
   confirmMaster: "Senha mestra",
   wrongLoginPassword: "Essa senha de login está incorreta.",
+  changeAvatar: "Trocar avatar",
+  cropAvatar: "Recortar avatar",
+  removeAvatar: "Remover avatar",
+  zoom: "Zoom",
+  dragToReposition: "Arraste para mover. Use o zoom para enquadrar e salve.",
+  avatarFailed: "Não foi possível carregar essa imagem.",
 };

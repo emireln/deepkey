@@ -197,6 +197,21 @@ function assertId(id: unknown): string {
   return id;
 }
 
+function mimeFromFile(filePath: string, bytes: Buffer): string {
+  if (bytes.length >= 4 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return "image/png";
+  if (bytes.length >= 2 && bytes[0] === 0xff && bytes[1] === 0xd8) return "image/jpeg";
+  if (bytes.length >= 12 && bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[8] === 0x57 && bytes[9] === 0x45) return "image/webp";
+  if (bytes.length >= 3 && bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46) return "image/gif";
+  const ext = path.extname(filePath).toLowerCase();
+  if (ext === ".png") return "image/png";
+  if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
+  if (ext === ".webp") return "image/webp";
+  if (ext === ".gif") return "image/gif";
+  if (ext === ".json") return "application/json";
+  if (ext === ".txt" || ext === ".env") return "text/plain";
+  return "application/octet-stream";
+}
+
 function createWindow(): void {
   const state = loadWindowState();
   const preload = path.join(__dirname, "preload.cjs");
@@ -310,7 +325,7 @@ function registerIpc(): void {
     if (result.canceled || !result.filePaths[0]) return null;
     const filePath = result.filePaths[0];
     const bytes = fs.readFileSync(filePath);
-    return { name: path.basename(filePath), mime: "application/octet-stream", bytes };
+    return { name: path.basename(filePath), mime: mimeFromFile(filePath, bytes), bytes };
   });
   ipcMain.handle("files:save", async (_e, filename, bytes, _mime) => {
     if (typeof filename !== "string" || filename.includes("..") || filename.includes("/") || filename.includes("\\")) {

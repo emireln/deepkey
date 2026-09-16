@@ -20,6 +20,7 @@ packages/types
 packages/validation
 packages/config
 assets/logo.svg  Brand mark
+assets/banner.svg README wordmark
 docs/            How it is put together
 ```
 

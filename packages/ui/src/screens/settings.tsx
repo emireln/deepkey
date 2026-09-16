@@ -3,11 +3,14 @@ import { DEFAULT_APP_SETTINGS, type AppSettings } from "@deepkey/types";
 import { inspectBackup } from "@deepkey/vault-core";
 import { scorePassword } from "@deepkey/validation";
 import { useEffect, useState } from "react";
+import { AvatarCrop } from "../components/AvatarCrop.js";
 import { Button, Checkbox, Field, Input, Select } from "../components/controls.js";
+import { UserAvatar } from "../components/UserAvatar.js";
 import { SupportButton } from "../components/SupportButton.js";
 import { Dialog, useToast } from "../components/feedback.js";
 import { t } from "../i18n/index.js";
-import { formatDate, initials } from "../lib/format.js";
+import { formatDate } from "../lib/format.js";
+import { asUint8Array, sniffImageMime } from "../lib/bytes.js";
 import { usePlatform } from "../platform/context.js";
 import { useVault } from "../state/vault.js";
 
@@ -537,27 +540,46 @@ export function ProfileScreen() {
   void tick;
   const profile = engine.profile();
   const [name, setName] = useState(profile?.displayName ?? "");
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
   const toast = useToast();
   const platform = usePlatform();
   if (!profile) return null;
   return (
     <div style={{ maxWidth: 480 }}>
       <h1 className="page-title">{t("profile")}</h1>
-      <div className="avatar" style={{ width: 64, height: 64, margin: "20px 0", fontSize: 20 }}>
-        {profile.avatarDataUrl ? <img src={profile.avatarDataUrl} alt="" /> : initials(name || "DK")}
+      <div style={{ margin: "20px 0" }}>
+        <UserAvatar src={profile.avatarDataUrl} label={name || "DK"} size={64} />
       </div>
-      <Button
-        onClick={async () => {
-          const file = await platform.files.open([{ name: "Images", extensions: ["png", "jpg", "jpeg", "webp"] }]);
-          if (!file) return;
-          const b64 = btoa(String.fromCharCode(...file.bytes.slice(0, 200_000)));
-          const mime = file.mime || "image/png";
-          await engine.saveProfile({ ...profile, avatarDataUrl: `data:${mime};base64,${b64}` });
-          refresh();
-        }}
-      >
-        Avatar
-      </Button>
+      <div className="split" style={{ marginBottom: 16 }}>
+        <Button
+          onClick={async () => {
+            const file = await platform.files.open([{ name: "Images", extensions: ["png", "jpg", "jpeg", "webp"] }]);
+            if (!file) return;
+            try {
+              const bytes = asUint8Array(file.bytes);
+              const mime = sniffImageMime(file.name, bytes, file.mime);
+              const copy = new Uint8Array(bytes.byteLength);
+              copy.set(bytes);
+              setCropSrc(URL.createObjectURL(new Blob([copy], { type: mime })));
+            } catch {
+              toast(t("avatarFailed"));
+            }
+          }}
+        >
+          {t("changeAvatar")}
+        </Button>
+        {profile.avatarDataUrl ? (
+          <Button
+            onClick={async () => {
+              await engine.saveProfile({ ...profile, avatarDataUrl: null });
+              refresh();
+              toast(t("saved"));
+            }}
+          >
+            {t("removeAvatar")}
+          </Button>
+        ) : null}
+      </div>
       <Field label={t("displayName")}>
         <Input value={name} onChange={(e) => setName(e.target.value)} />
       </Field>
@@ -583,6 +605,26 @@ export function ProfileScreen() {
       >
         {t("save")}
       </Button>
+      {cropSrc ? (
+        <AvatarCrop
+          src={cropSrc}
+          onCancel={() => {
+            URL.revokeObjectURL(cropSrc);
+            setCropSrc(null);
+          }}
+          onConfirm={async (dataUrl) => {
+            URL.revokeObjectURL(cropSrc);
+            setCropSrc(null);
+            try {
+              await engine.saveProfile({ ...profile, displayName: name.trim(), avatarDataUrl: dataUrl });
+              refresh();
+              toast(t("saved"));
+            } catch {
+              toast(t("avatarFailed"));
+            }
+          }}
+        />
+      ) : null}
     </div>
   );
 }

@@ -274,6 +274,12 @@ export const en = {
   backupWritten: "Encrypted backup written",
   confirmMaster: "Master password",
   wrongLoginPassword: "That login password is incorrect.",
+  changeAvatar: "Change avatar",
+  cropAvatar: "Crop avatar",
+  removeAvatar: "Remove avatar",
+  zoom: "Zoom",
+  dragToReposition: "Drag to move. Zoom to frame the shot, then save.",
+  avatarFailed: "That image could not be loaded.",
 };
 
 export type MessageKey = keyof typeof en;
