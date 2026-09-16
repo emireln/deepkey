@@ -71,7 +71,8 @@ export const en = {
   back: "Back",
   createVaultAction: "Create vault",
   forgotWarning:
-    "There is no master-password recovery. If you forget it, this vault cannot be unlocked.",
+    "There is no recovery. If you forget this password, this account cannot be opened. The only way to start over is to delete all DeepKey data from this computer. That destroys what was stored here. It does not recover it.",
+  noRecoveryConfirm: "I understand there is no recovery unless I delete DeepKey data from this computer.",
   securityPrefs: "Security preferences",
   autoLock: "Auto-lock",
   clipboardClear: "Clipboard clearing",

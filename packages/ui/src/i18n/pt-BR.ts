@@ -73,7 +73,8 @@ export const ptBR: Messages = {
   back: "Voltar",
   createVaultAction: "Criar cofre",
   forgotWarning:
-    "Não existe recuperação da senha mestra. Se você a esquecer, este cofre não poderá ser desbloqueado.",
+    "Não existe recuperação. Se você esquecer esta senha, esta conta não poderá ser aberta. A única forma de recomeçar é apagar todos os dados do DeepKey deste computador. Isso destrói o que estava guardado. Não recupera.",
+  noRecoveryConfirm: "Entendo que não há recuperação, a menos que eu apague os dados do DeepKey deste computador.",
   securityPrefs: "Preferências de segurança",
   autoLock: "Bloqueio automático",
   clipboardClear: "Limpeza da área de transferência",

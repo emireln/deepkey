@@ -9,12 +9,22 @@ import { useVault } from "../state/vault.js";
 import { usePlatform } from "../platform/context.js";
 import { DEFAULT_APP_SETTINGS } from "@deepkey/types";
 
+function RecoveryAck({ checked, onChange }: { checked: boolean; onChange: (value: boolean) => void }) {
+  return (
+    <div className="recovery-ack">
+      <p className="hint">{t("forgotWarning")}</p>
+      <Checkbox checked={checked} onChange={onChange} label={t("noRecoveryConfirm")} />
+    </div>
+  );
+}
+
 export function DesktopOnboarding() {
   const { createVault, busy, error, settings, saveSettings } = useVault();
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [ack, setAck] = useState(false);
   const strength = scorePassword(password, [name]);
   const mismatch = confirm.length > 0 && password !== confirm;
 
@@ -40,12 +50,12 @@ export function DesktopOnboarding() {
             <Field label={t("confirmPassword")}>
               <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
             </Field>
-            <p className="hint">{t("forgotWarning")}</p>
+            <RecoveryAck checked={ack} onChange={setAck} />
             {mismatch ? <p className="error-text">Passwords do not match.</p> : null}
             <div className="split" style={{ marginTop: 20, justifyContent: "flex-end" }}>
               <Button
                 variant="primary"
-                disabled={!name.trim() || password.length < 12 || password !== confirm}
+                disabled={!name.trim() || password.length < 12 || password !== confirm || !ack}
                 onClick={() => setStep(1)}
               >
                 {t("next")}
@@ -120,6 +130,7 @@ export function WebAuth() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [ack, setAck] = useState(false);
 
   useEffect(() => {
     platform.auth?.needsSetup().then(setSetup);
@@ -152,8 +163,9 @@ export function WebAuth() {
         <Field label={t("authPassword")}>
           <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
         </Field>
+        {setup ? <RecoveryAck checked={ack} onChange={setAck} /> : null}
         {error ? <p className="error-text">{error}</p> : null}
-        <Button variant="primary" disabled={busy || username.length < 3 || password.length < 10} onClick={submit}>
+        <Button variant="primary" disabled={busy || username.length < 3 || password.length < 10 || (setup && !ack)} onClick={submit}>
           {setup ? t("continue") : t("unlock")}
         </Button>
       </div>
@@ -166,6 +178,7 @@ export function WebVaultSetup() {
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [ack, setAck] = useState(false);
   const strength = scorePassword(password, [name]);
   if (busy) return <LoadingScreen />;
   return (
@@ -185,11 +198,11 @@ export function WebVaultSetup() {
         <Field label={t("confirmPassword")}>
           <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
         </Field>
-        <p className="hint">{t("forgotWarning")}</p>
+        <RecoveryAck checked={ack} onChange={setAck} />
         {error ? <p className="error-text">{error}</p> : null}
         <Button
           variant="primary"
-          disabled={busy || !name.trim() || password.length < 12 || password !== confirm}
+          disabled={busy || !name.trim() || password.length < 12 || password !== confirm || !ack}
           onClick={() => createVault(password, name.trim())}
         >
           {t("createVaultAction")}
