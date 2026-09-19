@@ -1,5 +1,4 @@
 import {
-  CaretLeft,
   FileCode,
   Files,
   Folders,
@@ -109,7 +108,7 @@ export function Sidebar({
                 title={t("collapseSidebar")}
                 onClick={onToggle}
               >
-                <CaretLeft size={16} weight="bold" />
+                <SidebarSimple size={18} weight="bold" />
               </button>
               <button type="button" className="sidebar-close" aria-label={t("closeSidebar")} onClick={onClose}>
                 <X size={16} weight="bold" />

@@ -1,6 +1,6 @@
 {
   "name": "deepkey",
-  "version": "1.0.17",
+  "version": "1.0.18",
   "private": true,
   "description": "Personal self-hosted encrypted vault for secrets, .env files, keys, and notes.",
   "license": "MIT",

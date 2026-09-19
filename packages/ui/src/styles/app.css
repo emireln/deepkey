@@ -270,14 +270,15 @@ a:focus {
 
 .sidebar.collapsed .brand-logo-wrap.is-clickable {
   position: relative;
-  width: 44px;
-  height: 44px;
+  width: 42px;
+  height: 42px;
   display: grid;
   place-items: center;
-  border-radius: 10px;
+  border-radius: var(--radius-nav);
   cursor: pointer;
   background: transparent;
   user-select: none;
+  outline: none;
   transition: background-color 140ms ease, transform 120ms ease;
 }
 
@@ -286,7 +287,7 @@ a:focus {
 }
 
 .sidebar.collapsed .brand-logo-wrap.is-clickable:active {
-  transform: scale(0.96);
+  transform: scale(0.92);
 }
 
 .sidebar.collapsed .brand-logo-wrap.is-clickable .brand-logo-inner {
@@ -301,7 +302,7 @@ a:focus {
   display: grid;
   place-items: center;
   opacity: 0;
-  transform: scale(0.85);
+  transform: scale(0.8);
   color: var(--text-primary);
   transition: opacity 140ms ease, transform 140ms ease;
   pointer-events: none;
@@ -309,7 +310,7 @@ a:focus {
 
 .sidebar.collapsed .brand-logo-wrap.is-clickable:hover .brand-logo-inner {
   opacity: 0;
-  transform: scale(0.85);
+  transform: scale(0.8);
 }
 
 .sidebar.collapsed .brand-logo-wrap.is-clickable:hover .brand-expand-overlay {
@@ -328,6 +329,11 @@ a:focus {
 .sidebar.collapsed .brand-logo-wrap.is-clickable:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px var(--focus);
+}
+
+.sidebar.collapsed .brand-logo-wrap.is-clickable:focus:not(:focus-visible) {
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 .brand-mark {
@@ -385,18 +391,43 @@ a:focus {
   flex: none;
   grid-column: 3;
   grid-row: 1;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface-1);
-  color: var(--text-primary);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
   display: grid;
   place-items: center;
+  cursor: pointer;
+  outline: none;
+  transition: background-color 140ms ease, color 140ms ease, transform 100ms ease;
 }
 
 .sidebar-toggle:hover,
 .sidebar-close:hover {
   background: var(--surface-hover);
   color: var(--text-primary);
+}
+
+.sidebar-toggle:active,
+.sidebar-close:active {
+  transform: scale(0.92);
+}
+
+.sidebar-toggle:focus,
+.sidebar-close:focus {
+  outline: none;
+}
+
+.sidebar-toggle:focus-visible,
+.sidebar-close:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--focus);
+}
+
+.sidebar-toggle:focus:not(:focus-visible),
+.sidebar-close:focus:not(:focus-visible) {
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 .sidebar-close {
