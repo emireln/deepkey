@@ -113,11 +113,26 @@ textarea {
 
 button {
   cursor: pointer;
+  outline: none;
+}
+
+button:focus {
+  outline: none;
 }
 
 a {
   color: var(--text-primary);
   text-decoration: none;
+  outline: none;
+}
+
+a:focus {
+  outline: none;
+}
+
+*:focus:not(:focus-visible) {
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 :focus-visible {
@@ -302,9 +317,17 @@ a {
   transform: scale(1);
 }
 
+.sidebar.collapsed .brand-logo-wrap.is-clickable {
+  outline: none;
+}
+
+.sidebar.collapsed .brand-logo-wrap.is-clickable:focus {
+  outline: none;
+}
+
 .sidebar.collapsed .brand-logo-wrap.is-clickable:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: 0 0 0 2px var(--focus);
 }
 
 .brand-mark {
@@ -405,6 +428,18 @@ a {
   width: 100%;
   text-align: left;
   font-weight: 700;
+  outline: none;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.nav-item:focus {
+  outline: none;
+}
+
+.nav-item:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--focus);
 }
 
 .nav-label {
@@ -595,21 +630,22 @@ a {
   height: var(--control-h);
   padding: 0 14px;
   background: var(--surface-1);
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
   min-width: 240px;
   flex: 1;
   color: var(--text-secondary);
-  transition: border-color 140ms ease, box-shadow 140ms ease, background-color 140ms ease, color 140ms ease;
+  transition: background-color 140ms ease, box-shadow 140ms ease, color 140ms ease;
 }
 
 .search:hover {
-  border-color: var(--border-strong);
+  background: var(--surface-hover);
+  border-color: transparent;
 }
 
 .search:focus-within {
-  border-color: var(--focus);
-  box-shadow: 0 0 0 2px rgba(22, 136, 248, 0.25);
+  border-color: transparent;
+  box-shadow: 0 0 0 2px var(--app-bg), 0 0 0 4px var(--focus);
   background: var(--surface-hover);
   color: var(--text-primary);
 }
@@ -630,7 +666,7 @@ a {
 
 .btn {
   height: var(--control-h);
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
   padding: 0 14px;
   display: inline-flex;
@@ -643,27 +679,32 @@ a {
   color: var(--text-primary);
   cursor: pointer;
   user-select: none;
-  transition: all 140ms ease;
+  outline: none;
+  transition: background-color 140ms ease, box-shadow 140ms ease, transform 100ms ease;
 }
 
 .btn:hover {
   background: var(--surface-hover);
-  border-color: var(--border-strong);
+  border-color: transparent;
 }
 
 .btn:active:not(:disabled) {
   transform: scale(0.98);
 }
 
+.btn:focus {
+  outline: none;
+}
+
 .btn:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: 0 0 0 2px var(--app-bg), 0 0 0 4px var(--focus);
 }
 
 .btn.primary {
   background: var(--button-primary-bg);
   color: var(--button-primary-text);
-  border-color: transparent;
+  border: 1px solid transparent;
 }
 
 .btn.primary:hover {
@@ -680,7 +721,7 @@ a {
 .btn.ghost {
   background: transparent;
   color: var(--text-secondary);
-  border-color: transparent;
+  border: 1px solid transparent;
 }
 
 .btn.ghost:hover {
@@ -692,7 +733,7 @@ a {
 .btn.danger {
   background: transparent;
   color: var(--danger);
-  border-color: transparent;
+  border: 1px solid transparent;
 }
 
 .btn.danger:hover {
@@ -704,7 +745,7 @@ a {
 .btn.danger-solid {
   background: var(--danger);
   color: white;
-  border-color: transparent;
+  border: 1px solid transparent;
 }
 
 .btn.danger-solid:hover {
@@ -718,9 +759,13 @@ a {
   padding: 0;
   justify-content: center;
   color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
 }
 
 .btn.icon:hover {
+  background: var(--surface-hover);
+  border-color: transparent;
   color: var(--text-primary);
 }
 
@@ -740,8 +785,13 @@ a {
   background: var(--surface-1);
   border-radius: var(--radius-lg);
   padding: 22px 22px 20px;
-  border: 1px solid var(--border);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] .card {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .card-label {
@@ -777,7 +827,11 @@ a {
   background: var(--surface-1);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  border: 1px solid var(--border);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="light"] .list {
+  border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .list-row {
@@ -786,12 +840,17 @@ a {
   gap: 12px;
   align-items: center;
   padding: 14px 18px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
   width: 100%;
   background: transparent;
   color: inherit;
   text-align: left;
+  outline: none;
   transition: background 120ms ease;
+}
+
+[data-theme="light"] .list-row {
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .list-row:first-child,
@@ -801,6 +860,16 @@ a {
 
 .list-row[role="button"] {
   cursor: pointer;
+  outline: none;
+}
+
+.list-row[role="button"]:focus {
+  outline: none;
+}
+
+.list-row[role="button"]:focus-visible {
+  outline: none;
+  background: var(--surface-hover);
 }
 
 .list-row:not([role="button"]) {
@@ -853,28 +922,36 @@ a {
 }
 
 .input,
-.select,
 .textarea {
   height: var(--control-h);
   background: var(--surface-1);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-md);
   padding: 0 14px;
   color: var(--text-primary);
   font-size: 15px;
   font-weight: 600;
   width: 100%;
+  outline: none;
   transition: border-color 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
 }
 
+[data-theme="light"] .input,
+[data-theme="light"] .textarea {
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
 .input:hover,
-.select:hover,
 .textarea:hover {
-  border-color: var(--border-strong);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+[data-theme="light"] .input:hover,
+[data-theme="light"] .textarea:hover {
+  border-color: rgba(0, 0, 0, 0.18);
 }
 
 .input:focus,
-.select:focus,
 .textarea:focus {
   outline: none;
   border-color: var(--focus);
@@ -892,31 +969,53 @@ a {
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
+  height: var(--control-h);
   background-color: var(--surface-1);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 256 256' fill='%23a5a7ac'%3E%3Cpath d='M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z'%3E%3C/path%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 256 256' fill='%23a5a7ac'%3E%3Cpath d='M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z'%3E%3C/path%3E%3C/svg%3E") !important;
   background-repeat: no-repeat !important;
-  background-position: right 14px center !important;
+  background-position: calc(100% - 14px) center !important;
   background-size: 14px 14px !important;
-  padding-right: 38px;
+  padding: 0 38px 0 14px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
+  outline: none;
+  transition: background-color 140ms ease, box-shadow 140ms ease;
+}
+
+.select,
+.select:hover,
+.select:focus,
+.select:active {
+  background-repeat: no-repeat !important;
+  background-position: calc(100% - 14px) center !important;
+  background-size: 14px 14px !important;
 }
 
 .select:hover {
   background-color: var(--surface-hover);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 256 256' fill='%23f4f4f5'%3E%3Cpath d='M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z'%3E%3C/path%3E%3C/svg%3E");
+  border-color: transparent;
+  outline: none;
 }
 
 .select:focus {
   background-color: var(--surface-hover);
-  background-repeat: no-repeat !important;
-  background-position: right 14px center !important;
-  background-size: 14px 14px !important;
+  outline: none;
+  box-shadow: 0 0 0 2px var(--app-bg), 0 0 0 4px var(--focus);
 }
 
 .select option {
   background-color: #202123;
   color: var(--text-primary);
   padding: 8px 12px;
+}
+
+[data-theme="light"] .select option {
+  background-color: #ffffff;
+  color: var(--text-primary);
 }
 
 .textarea {
@@ -1552,10 +1651,15 @@ a {
   cursor: pointer;
   width: 100%;
   height: 100%;
+  outline: none;
 }
 
-.checkbox-input:focus-visible + .checkbox-icon,
-.checkline:focus-within .checkbox-control {
+.checkbox-input:focus {
+  outline: none;
+}
+
+.checkline:has(.checkbox-input:focus-visible) .checkbox-control,
+.checkbox-control:has(.checkbox-input:focus-visible) {
   box-shadow: 0 0 0 2px var(--focus);
 }
 
