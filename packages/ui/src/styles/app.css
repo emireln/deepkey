@@ -254,14 +254,57 @@ a {
 }
 
 .sidebar.collapsed .brand-logo-wrap.is-clickable {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
   cursor: pointer;
-  border-radius: 8px;
-  transition: transform 120ms ease, opacity 120ms ease;
+  background: transparent;
+  user-select: none;
+  transition: background-color 140ms ease, transform 120ms ease;
 }
 
 .sidebar.collapsed .brand-logo-wrap.is-clickable:hover {
-  opacity: 0.9;
-  transform: scale(1.04);
+  background: var(--surface-hover);
+}
+
+.sidebar.collapsed .brand-logo-wrap.is-clickable:active {
+  transform: scale(0.96);
+}
+
+.sidebar.collapsed .brand-logo-wrap.is-clickable .brand-logo-inner {
+  display: grid;
+  place-items: center;
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.sidebar.collapsed .brand-logo-wrap.is-clickable .brand-expand-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  transform: scale(0.85);
+  color: var(--text-primary);
+  transition: opacity 140ms ease, transform 140ms ease;
+  pointer-events: none;
+}
+
+.sidebar.collapsed .brand-logo-wrap.is-clickable:hover .brand-logo-inner {
+  opacity: 0;
+  transform: scale(0.85);
+}
+
+.sidebar.collapsed .brand-logo-wrap.is-clickable:hover .brand-expand-overlay {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.sidebar.collapsed .brand-logo-wrap.is-clickable:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 
 .brand-mark {
@@ -428,14 +471,7 @@ a {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 4px 0 16px;
-}
-
-.sidebar.collapsed .sidebar-toggle {
-  margin: 0;
-  grid-column: auto;
-  grid-row: auto;
+  padding: 8px 0 16px;
 }
 
 .sidebar.collapsed .profile-btn {

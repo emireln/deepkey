@@ -1,6 +1,5 @@
 import {
   CaretLeft,
-  CaretRight,
   FileCode,
   Files,
   Folders,
@@ -10,6 +9,7 @@ import {
   Note,
   Password,
   ShieldCheck,
+  SidebarSimple,
   SquaresFour,
   Trash,
   Vault,
@@ -75,38 +75,47 @@ export function Sidebar({
       {open ? <div className="drawer-backdrop" onClick={onClose} /> : null}
       <aside className={`sidebar ${collapsed ? "collapsed" : ""} ${open ? "open" : ""}`}>
         <div className="brand">
-          <div
-            className={`brand-logo-wrap${collapsed ? " is-clickable" : ""}`}
-            onClick={collapsed ? onToggle : undefined}
-            title={collapsed ? t("expandSidebar") : undefined}
-            role={collapsed ? "button" : undefined}
-            tabIndex={collapsed ? 0 : undefined}
-            onKeyDown={
-              collapsed
-                ? (e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      onToggle();
-                    }
-                  }
-                : undefined
-            }
-          >
-            <Logo size={34} />
-          </div>
-          <span className="brand-word">{t("app")}</span>
-          <button
-            type="button"
-            className="sidebar-toggle"
-            aria-label={collapsed ? t("expandSidebar") : t("collapseSidebar")}
-            title={collapsed ? t("expandSidebar") : t("collapseSidebar")}
-            onClick={onToggle}
-          >
-            {collapsed ? <CaretRight size={16} weight="bold" /> : <CaretLeft size={16} weight="bold" />}
-          </button>
-          <button type="button" className="sidebar-close" aria-label={t("closeSidebar")} onClick={onClose}>
-            <X size={16} weight="bold" />
-          </button>
+          {collapsed ? (
+            <div
+              className="brand-logo-wrap is-clickable"
+              onClick={onToggle}
+              title={t("expandSidebar")}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onToggle();
+                }
+              }}
+            >
+              <div className="brand-logo-inner">
+                <Logo size={34} />
+              </div>
+              <span className="brand-expand-overlay" aria-hidden="true">
+                <SidebarSimple size={20} weight="bold" />
+              </span>
+            </div>
+          ) : (
+            <>
+              <div className="brand-logo-wrap">
+                <Logo size={34} />
+              </div>
+              <span className="brand-word">{t("app")}</span>
+              <button
+                type="button"
+                className="sidebar-toggle"
+                aria-label={t("collapseSidebar")}
+                title={t("collapseSidebar")}
+                onClick={onToggle}
+              >
+                <CaretLeft size={16} weight="bold" />
+              </button>
+              <button type="button" className="sidebar-close" aria-label={t("closeSidebar")} onClick={onClose}>
+                <X size={16} weight="bold" />
+              </button>
+            </>
+          )}
         </div>
         <div className="sidebar-scroll">
           <nav className="nav-group">
