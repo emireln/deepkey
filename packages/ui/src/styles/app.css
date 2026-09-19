@@ -548,7 +548,14 @@ a {
   flex: 1;
   min-width: 0;
   overflow: auto;
-  padding: var(--space-page) 40px 48px;
+  padding: var(--space-page) 48px 48px;
+}
+
+.content > * {
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
 }
 
 .page-head {
@@ -872,7 +879,7 @@ a {
   outline: none;
   border-color: var(--focus);
   box-shadow: 0 0 0 2px rgba(22, 136, 248, 0.25);
-  background: var(--surface-hover);
+  background-color: var(--surface-hover);
 }
 
 .input::placeholder,
@@ -887,15 +894,23 @@ a {
   -moz-appearance: none;
   background-color: var(--surface-1);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 256 256' fill='%23a5a7ac'%3E%3Cpath d='M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z'%3E%3C/path%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 14px center;
-  background-size: 14px 14px;
+  background-repeat: no-repeat !important;
+  background-position: right 14px center !important;
+  background-size: 14px 14px !important;
   padding-right: 38px;
   cursor: pointer;
 }
 
 .select:hover {
+  background-color: var(--surface-hover);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 256 256' fill='%23f4f4f5'%3E%3Cpath d='M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z'%3E%3C/path%3E%3C/svg%3E");
+}
+
+.select:focus {
+  background-color: var(--surface-hover);
+  background-repeat: no-repeat !important;
+  background-position: right 14px center !important;
+  background-size: 14px 14px !important;
 }
 
 .select option {
@@ -1272,7 +1287,7 @@ a {
 .details {
   display: grid;
   gap: 14px;
-  max-width: 860px;
+  max-width: 100%;
 }
 
 .detail-block {
@@ -1330,8 +1345,9 @@ a {
 
 .settings-layout {
   display: grid;
-  grid-template-columns: 200px minmax(0, 720px);
-  gap: 28px;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 32px;
+  width: 100%;
 }
 
 .settings-nav {
