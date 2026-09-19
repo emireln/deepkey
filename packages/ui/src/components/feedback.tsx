@@ -38,12 +38,10 @@ export function Dialog(props: {
         <h2 id="dlg-title">{props.title}</h2>
         <p>{props.body}</p>
         <div className="dialog-actions">
-          <button type="button" className="btn" onClick={props.onCancel}>
-            {t("cancel")}
-          </button>
-          <button type="button" className={props.danger ? "btn danger-solid" : "btn primary"} onClick={props.onConfirm}>
+          <Button onClick={props.onCancel}>{t("cancel")}</Button>
+          <Button variant={props.danger ? "danger-solid" : "primary"} onClick={props.onConfirm}>
             {props.confirm}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

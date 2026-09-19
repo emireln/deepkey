@@ -75,12 +75,31 @@ export function Sidebar({
       {open ? <div className="drawer-backdrop" onClick={onClose} /> : null}
       <aside className={`sidebar ${collapsed ? "collapsed" : ""} ${open ? "open" : ""}`}>
         <div className="brand">
-          <Logo size={34} />
+          <div
+            className={`brand-logo-wrap${collapsed ? " is-clickable" : ""}`}
+            onClick={collapsed ? onToggle : undefined}
+            title={collapsed ? t("expandSidebar") : undefined}
+            role={collapsed ? "button" : undefined}
+            tabIndex={collapsed ? 0 : undefined}
+            onKeyDown={
+              collapsed
+                ? (e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onToggle();
+                    }
+                  }
+                : undefined
+            }
+          >
+            <Logo size={34} />
+          </div>
           <span className="brand-word">{t("app")}</span>
           <button
             type="button"
             className="sidebar-toggle"
             aria-label={collapsed ? t("expandSidebar") : t("collapseSidebar")}
+            title={collapsed ? t("expandSidebar") : t("collapseSidebar")}
             onClick={onToggle}
           >
             {collapsed ? <CaretRight size={16} weight="bold" /> : <CaretLeft size={16} weight="bold" />}

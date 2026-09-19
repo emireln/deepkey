@@ -164,33 +164,35 @@ export function SettingsScreen({ initial = "general" }: { initial?: Category }) 
                   ))}
                 </Select>
               </Field>
-              <Checkbox checked={settings.security.lockOnSleep} onChange={(v) => patch({ ...settings, security: { ...settings.security, lockOnSleep: v } })} label={t("lockOnSleep")} />
-              <Checkbox checked={settings.security.lockOnDesktopLock} onChange={(v) => patch({ ...settings, security: { ...settings.security, lockOnDesktopLock: v } })} label="Lock when the desktop locks" />
-              <Checkbox checked={settings.security.lockOnExit} onChange={(v) => patch({ ...settings, security: { ...settings.security, lockOnExit: v } })} label="Lock when DeepKey exits" />
-              <Checkbox checked={settings.security.lockOnBackground} onChange={(v) => patch({ ...settings, security: { ...settings.security, lockOnBackground: v } })} label={t("lockOnBackground")} />
-              <Checkbox checked={settings.security.privacyMode} onChange={(v) => patch({ ...settings, security: { ...settings.security, privacyMode: v } })} label={t("privacyMode")} />
-              {platform.kind === "desktop" ? (
-                <Checkbox checked={settings.security.contentProtection} onChange={(v) => patch({ ...settings, security: { ...settings.security, contentProtection: v } })} label={t("contentProtection")} />
-              ) : null}
-              <Checkbox checked={settings.security.requirePasswordForExport} onChange={(v) => patch({ ...settings, security: { ...settings.security, requirePasswordForExport: v } })} label={t("requirePassword")} />
-              <Checkbox checked={settings.security.notifyExpiring} onChange={(v) => patch({ ...settings, security: { ...settings.security, notifyExpiring: v } })} label={t("notifyExpiring")} />
-              {settings.security.notifyExpiring ? (
-                <Checkbox
-                  checked={settings.security.allowSecretNamesInNotifications}
-                  onChange={(v) => patch({ ...settings, security: { ...settings.security, allowSecretNamesInNotifications: v } })}
-                  label={t("allowNamesInNotifications")}
-                />
-              ) : null}
-              {platform.osUnlock ? (
-                <Checkbox
-                  checked={settings.security.osUnlockEnabled}
-                  onChange={async (v) => {
-                    await patch({ ...settings, security: { ...settings.security, osUnlockEnabled: v } });
-                    if (!v) await platform.osUnlock?.clear();
-                  }}
-                  label={t("osUnlock")}
-                />
-              ) : null}
+              <div className="checkbox-stack">
+                <Checkbox checked={settings.security.lockOnSleep} onChange={(v) => patch({ ...settings, security: { ...settings.security, lockOnSleep: v } })} label={t("lockOnSleep")} />
+                <Checkbox checked={settings.security.lockOnDesktopLock} onChange={(v) => patch({ ...settings, security: { ...settings.security, lockOnDesktopLock: v } })} label="Lock when the desktop locks" />
+                <Checkbox checked={settings.security.lockOnExit} onChange={(v) => patch({ ...settings, security: { ...settings.security, lockOnExit: v } })} label="Lock when DeepKey exits" />
+                <Checkbox checked={settings.security.lockOnBackground} onChange={(v) => patch({ ...settings, security: { ...settings.security, lockOnBackground: v } })} label={t("lockOnBackground")} />
+                <Checkbox checked={settings.security.privacyMode} onChange={(v) => patch({ ...settings, security: { ...settings.security, privacyMode: v } })} label={t("privacyMode")} />
+                {platform.kind === "desktop" ? (
+                  <Checkbox checked={settings.security.contentProtection} onChange={(v) => patch({ ...settings, security: { ...settings.security, contentProtection: v } })} label={t("contentProtection")} />
+                ) : null}
+                <Checkbox checked={settings.security.requirePasswordForExport} onChange={(v) => patch({ ...settings, security: { ...settings.security, requirePasswordForExport: v } })} label={t("requirePassword")} />
+                <Checkbox checked={settings.security.notifyExpiring} onChange={(v) => patch({ ...settings, security: { ...settings.security, notifyExpiring: v } })} label={t("notifyExpiring")} />
+                {settings.security.notifyExpiring ? (
+                  <Checkbox
+                    checked={settings.security.allowSecretNamesInNotifications}
+                    onChange={(v) => patch({ ...settings, security: { ...settings.security, allowSecretNamesInNotifications: v } })}
+                    label={t("allowNamesInNotifications")}
+                  />
+                ) : null}
+                {platform.osUnlock ? (
+                  <Checkbox
+                    checked={settings.security.osUnlockEnabled}
+                    onChange={async (v) => {
+                      await patch({ ...settings, security: { ...settings.security, osUnlockEnabled: v } });
+                      if (!v) await platform.osUnlock?.clear();
+                    }}
+                    label={t("osUnlock")}
+                  />
+                ) : null}
+              </div>
               <Field label={t("revealTimeout")}>
                 <Select
                   value={String(settings.security.revealMs)}
@@ -406,7 +408,7 @@ export function SettingsScreen({ initial = "general" }: { initial?: Category }) 
           ) : null}
 
           {cat === "desktop" && platform.kind === "desktop" ? (
-            <>
+            <div className="checkbox-stack">
               <Checkbox checked={settings.ui.launchAtStartup} onChange={(v) => patch({ ...settings, ui: { ...settings.ui, launchAtStartup: v } })} label={t("launchAtStartup")} />
               <Checkbox checked={settings.ui.trayEnabled} onChange={(v) => patch({ ...settings, ui: { ...settings.ui, trayEnabled: v } })} label={t("tray")} />
               <Checkbox
@@ -415,7 +417,7 @@ export function SettingsScreen({ initial = "general" }: { initial?: Category }) 
                 label={t("globalShortcut")}
               />
               <p className="hint">{t("globalShortcutHint")}</p>
-            </>
+            </div>
           ) : null}
 
           {cat === "advanced" ? (
@@ -437,9 +439,11 @@ export function SettingsScreen({ initial = "general" }: { initial?: Category }) 
               <div className="danger-zone" style={{ marginTop: 28 }}>
                 <h2 className="section-title">{t("dangerZone")}</h2>
                 <p className="hint">{t("deleteVaultSub")}</p>
-                <Button variant="danger" onClick={() => setDeleteOpen(true)}>
-                  {t("deleteVault")}
-                </Button>
+                <div style={{ marginTop: 16 }}>
+                  <Button variant="danger" onClick={() => setDeleteOpen(true)}>
+                    {t("deleteVault")}
+                  </Button>
+                </div>
               </div>
             </>
           ) : null}
@@ -477,16 +481,15 @@ export function SettingsScreen({ initial = "general" }: { initial?: Category }) 
             </Field>
             <div className="dialog-actions">
               <Button onClick={() => setDeleteOpen(false)}>{t("cancel")}</Button>
-              <button
-                type="button"
-                className="btn danger-solid"
+              <Button
+                variant="danger-solid"
                 onClick={async () => {
                   await engine.wipe(confirmPw);
                   window.location.reload();
                 }}
               >
                 {t("deleteVault")}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

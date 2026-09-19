@@ -1,5 +1,5 @@
-import { Copy, DotsThree, PencilSimple, Plus, Star } from "@phosphor-icons/react";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Copy, DotsThree, MagnifyingGlass, PencilSimple, Plus, Star } from "@phosphor-icons/react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import type { ItemType, VaultItem } from "@deepkey/types";
 import { ITEM_TYPES } from "@deepkey/config";
@@ -124,10 +124,22 @@ export function ItemTable({ items }: { items: VaultItem[] }) {
         const project = item.projectId ? engine.getProject(item.projectId) : null;
         const env = item.environmentId ? engine.getEnvironment(item.environmentId) : null;
         return (
-          <button key={item.id} type="button" className="list-row" onClick={() => navigate(`/vault/${item.id}`)}>
-            <span className="item-name">
-              {item.favorite ? "★ " : ""}
-              {item.name}
+          <div
+            key={item.id}
+            className="list-row"
+            role="button"
+            tabIndex={0}
+            onClick={() => navigate(`/vault/${item.id}`)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                navigate(`/vault/${item.id}`);
+              }
+            }}
+          >
+            <span className="item-name" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              {item.favorite ? <Star size={14} weight="fill" style={{ color: "#e9a72e", flexShrink: 0 }} /> : null}
+              <span>{item.name}</span>
             </span>
             <span className="cell-muted">{typeLabel(item.type)}</span>
             <span className="cell-muted">{project?.name ?? "—"}</span>
@@ -151,10 +163,10 @@ export function ItemTable({ items }: { items: VaultItem[] }) {
                   refresh();
                 }}
               >
-                <Star size={16} weight={item.favorite ? "fill" : "regular"} />
+                <Star size={16} weight={item.favorite ? "fill" : "regular"} style={item.favorite ? { color: "#e9a72e" } : undefined} />
               </Button>
             </span>
-          </button>
+          </div>
         );
       })}
     </div>
@@ -212,6 +224,7 @@ export function VaultListScreen({ filterType }: { filterType?: ItemType | ItemTy
       />
       <div className="toolbar">
         <label className="search">
+          <MagnifyingGlass size={18} weight="bold" />
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("search")} />
         </label>
         {!allowed ? (
@@ -266,6 +279,17 @@ export function ItemDetailScreen() {
   const navigate = useNavigate();
   const [menu, setMenu] = useState(false);
   const [confirm, setConfirm] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menu) return;
+    const onDoc = (e: MouseEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setMenu(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [menu]);
+
   const item = id ? engine.getItem(id) : null;
   useEffect(() => {
     if (item && !item.deletedAt) void engine.touchItem(item.id);
@@ -301,9 +325,9 @@ export function ItemDetailScreen() {
                 refresh();
               }}
             >
-              <Star size={18} weight={item.favorite ? "fill" : "regular"} />
+              <Star size={18} weight={item.favorite ? "fill" : "regular"} style={item.favorite ? { color: "#e9a72e" } : undefined} />
             </Button>
-            <div style={{ position: "relative" }}>
+            <div ref={menuRef} style={{ position: "relative" }}>
               <Button variant="icon" aria-label={t("more")} onClick={() => setMenu((v) => !v)}>
                 <DotsThree size={18} />
               </Button>
@@ -418,7 +442,7 @@ export function ItemDetailScreen() {
             >
               {t("download")}
             </Button>
-            <p className="hint">{t("plaintextWarning")}</p>
+            <p className="hint" style={{ marginTop: 8 }}>{t("plaintextWarning")}</p>
           </div>
         ) : null}
         {item.notes ? (
@@ -596,9 +620,11 @@ export function NewSecretScreen({ editId }: { editId?: string }) {
               <Field label={t("port")}>
                 <Input value={port} onChange={(e) => setPort(e.target.value)} />
               </Field>
-              <Field label={t("database")}>
-                <Input value={database} onChange={(e) => setDatabase(e.target.value)} />
-              </Field>
+              <div style={{ gridColumn: "1 / -1" }}>
+                <Field label={t("database")}>
+                  <Input value={database} onChange={(e) => setDatabase(e.target.value)} />
+                </Field>
+              </div>
             </div>
           ) : null}
           {type === "ssh_key" ? (

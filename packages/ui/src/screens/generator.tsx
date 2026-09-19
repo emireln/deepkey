@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { DEFAULT_GENERATOR, generateSecret } from "@deepkey/vault-core";
-import { Button, Checkbox, Field, Input, Select } from "../components/controls.js";
+import { Button, Checkbox, Field, Input, Select, Textarea } from "../components/controls.js";
 import { t } from "../i18n/index.js";
 import { useVault } from "../state/vault.js";
 import { useNavigate } from "react-router-dom";
@@ -30,7 +30,7 @@ export function GeneratorScreen() {
   return (
     <div>
       <h1 className="page-title">{t("generator")}</h1>
-      <div className="grid-2" style={{ marginTop: 24, maxWidth: 760 }}>
+      <div className="grid-2" style={{ marginTop: 24, maxWidth: 840 }}>
         <div className="card">
           <Field label={t("type")}>
             <Select
@@ -62,20 +62,28 @@ export function GeneratorScreen() {
             </Field>
           ) : null}
           {opts.kind === "password" ? (
-            <>
+            <div className="checkbox-stack">
               <Checkbox checked={opts.uppercase} onChange={(v) => setOpts({ ...opts, uppercase: v })} label={t("uppercase")} />
               <Checkbox checked={opts.lowercase} onChange={(v) => setOpts({ ...opts, lowercase: v })} label={t("lowercase")} />
               <Checkbox checked={opts.numbers} onChange={(v) => setOpts({ ...opts, numbers: v })} label={t("numbers")} />
               <Checkbox checked={opts.symbols} onChange={(v) => setOpts({ ...opts, symbols: v })} label={t("symbols")} />
               <Checkbox checked={opts.avoidAmbiguous} onChange={(v) => setOpts({ ...opts, avoidAmbiguous: v })} label={t("avoidAmbiguous")} />
-            </>
+            </div>
           ) : null}
         </div>
-        <div className="card">
-          <Field label={t("value")}>
-            <Input mono readOnly value={value} />
-          </Field>
-          <div className="split">
+        <div className="card" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+          <div>
+            <Field label={t("value")}>
+              <Textarea
+                mono
+                readOnly
+                value={value}
+                rows={4}
+                style={{ minHeight: 110, wordBreak: "break-all", resize: "none", fontSize: 16, lineHeight: 1.5 }}
+              />
+            </Field>
+          </div>
+          <div className="split" style={{ marginTop: 16 }}>
             <Button onClick={() => regen()}>{t("regenerate")}</Button>
             <Button onClick={() => copySecret(value)}>{t("copy")}</Button>
             <Button

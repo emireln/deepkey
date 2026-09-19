@@ -6,7 +6,7 @@ import { mask } from "../lib/format.js";
 export function Button({
   variant = "secondary",
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "secondary" | "ghost" | "danger" | "icon" }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "secondary" | "ghost" | "danger" | "danger-solid" | "icon" }) {
   const cls =
     variant === "primary"
       ? "btn primary"
@@ -14,9 +14,11 @@ export function Button({
         ? "btn ghost"
         : variant === "danger"
           ? "btn danger"
-          : variant === "icon"
-            ? "btn icon"
-            : "btn";
+          : variant === "danger-solid"
+            ? "btn danger-solid"
+            : variant === "icon"
+              ? "btn icon"
+              : "btn";
   return <button type="button" {...props} className={`${cls} ${props.className ?? ""}`} />;
 }
 
@@ -92,15 +94,34 @@ export function Checkbox({
   checked,
   onChange,
   label,
+  disabled,
 }: {
   checked: boolean;
   onChange: (value: boolean) => void;
   label: string;
+  disabled?: boolean;
 }) {
   return (
-    <label className="checkline">
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-      {label}
+    <label className={`checkline${checked ? " is-checked" : ""}${disabled ? " is-disabled" : ""}`}>
+      <span className="checkbox-control">
+        <input
+          type="checkbox"
+          className="checkbox-input"
+          checked={checked}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.checked)}
+        />
+        <svg className="checkbox-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path
+            d="M3.5 8.5L6.5 11.5L12.5 4.5"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </span>
+      <span className="checkbox-label">{label}</span>
     </label>
   );
 }

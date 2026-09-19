@@ -61,10 +61,23 @@ export function ProjectsScreen() {
       {projects.length ? (
         <div className="list">
           {projects.map((p) => (
-            <button key={p.id} type="button" className="list-row" style={{ gridTemplateColumns: "1fr auto" }} onClick={() => navigate(`/projects/${p.id}`)}>
+            <div
+              key={p.id}
+              className="list-row"
+              role="button"
+              tabIndex={0}
+              style={{ gridTemplateColumns: "1fr auto" }}
+              onClick={() => navigate(`/projects/${p.id}`)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  navigate(`/projects/${p.id}`);
+                }
+              }}
+            >
               <span>{p.name}</span>
               <span className="cell-muted">{engine.environments(p.id).map((e) => e.name).join(" · ")}</span>
-            </button>
+            </div>
           ))}
         </div>
       ) : (
@@ -370,7 +383,7 @@ export function EnvFilesScreen() {
             <div className="list">
               {items.map((item) => (
                 <div key={item.id} className="list-row" style={{ gridTemplateColumns: "1fr 1.6fr auto" }}>
-                  <button type="button" className="btn ghost" onClick={() => navigate(`/vault/${item.id}`)}>
+                  <button type="button" className="btn ghost" style={{ justifyContent: "flex-start", textAlign: "left" }} onClick={() => navigate(`/vault/${item.id}`)}>
                     {item.name}
                   </button>
                   <SecretField value={item.fields.value ?? ""} readOnly revealMs={settings.security.revealMs} onCopy={copySecret} />

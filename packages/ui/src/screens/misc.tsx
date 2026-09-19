@@ -1,3 +1,4 @@
+import { UploadSimple } from "@phosphor-icons/react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, EmptyState, Input, Textarea } from "../components/controls.js";
@@ -144,16 +145,29 @@ export function FilesManagerScreen() {
             navigate(`/vault/${item.id}`);
           }}
         >
-          {t("files")}
+          <UploadSimple size={16} weight="bold" /> {t("browse")}
         </Button>
       </div>
       {items.length ? (
         <div className="list">
           {items.map((item) => (
-            <button key={item.id} type="button" className="list-row" style={{ gridTemplateColumns: "1fr auto" }} onClick={() => navigate(`/vault/${item.id}`)}>
+            <div
+              key={item.id}
+              className="list-row"
+              role="button"
+              tabIndex={0}
+              style={{ gridTemplateColumns: "1fr auto" }}
+              onClick={() => navigate(`/vault/${item.id}`)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  navigate(`/vault/${item.id}`);
+                }
+              }}
+            >
               <span>{item.name}</span>
               <span className="cell-muted">{item.attachmentName}</span>
-            </button>
+            </div>
           ))}
         </div>
       ) : (

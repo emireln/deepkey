@@ -1,3 +1,4 @@
+import { MagnifyingGlass } from "@phosphor-icons/react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { itemSecret, type CommandId } from "@deepkey/vault-core";
@@ -83,7 +84,10 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   return (
     <div className="palette-backdrop" onClick={onClose}>
       <div className="palette" onClick={(e) => e.stopPropagation()}>
-        <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("paletteHint")} />
+        <div className="palette-input-wrap">
+          <MagnifyingGlass size={18} weight="bold" />
+          <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("paletteHint")} />
+        </div>
         <div className="palette-list">
           {hits.map((hit, i) => (
             <button
