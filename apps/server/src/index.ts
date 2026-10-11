@@ -3,7 +3,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
-import { Hono } from "hono";
+import { getConnInfo } from "@hono/node-server/conninfo";
+import { Hono, type Context } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { secureHeaders } from "hono/secure-headers";
 import { APP_VERSION } from "@deepkey/config";
@@ -31,14 +32,25 @@ import {
   userCount,
   verifyUser,
 } from "./auth.js";
+import { clientAddress, isHttpsRequest, trustProxyEnabled } from "./client.js";
 
 const COOKIE = "deepkey_session";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const trustProxy = trustProxyEnabled();
 
-function isSecure(c: { req: { url: string; header: (n: string) => string | undefined } }): boolean {
+function isSecure(c: Context): boolean {
   if (process.env.DEEPKEY_PUBLIC_URL?.startsWith("https://")) return true;
-  const proto = c.req.header("x-forwarded-proto");
-  return proto === "https" || new URL(c.req.url).protocol === "https:";
+  return isHttpsRequest({ forwardedProto: c.req.header("x-forwarded-proto"), url: c.req.url }, trustProxy);
+}
+
+function clientIp(c: Context): string {
+  let remoteAddress: string | undefined;
+  try {
+    remoteAddress = getConnInfo(c).remote.address;
+  } catch {
+    /* no socket behind app.request() in tests */
+  }
+  return clientAddress({ forwardedFor: c.req.header("x-forwarded-for"), remoteAddress }, trustProxy);
 }
 
 function originAllowed(c: { req: { url: string; header: (n: string) => string | undefined } }): boolean {
@@ -104,7 +116,7 @@ app.get("/api/auth/setup-needed", (c) => c.json({ needed: userCount() === 0 }));
 
 app.post("/api/auth/setup", async (c) => {
   if (userCount() > 0) return c.json({ error: "Already set up." }, 400);
-  const ip = c.req.header("x-forwarded-for")?.split(",")[0]?.trim() || "local";
+  const ip = clientIp(c);
   if (rateLimited(ip)) return c.json({ error: "Too many attempts." }, 429);
   try {
     const body = await c.req.json();
@@ -125,7 +137,7 @@ app.post("/api/auth/setup", async (c) => {
 app.post("/api/auth/login", async (c) => {
   const body = await c.req.json().catch(() => ({}));
   const username = String((body as { username?: string }).username ?? "");
-  const ip = `${c.req.header("x-forwarded-for")?.split(",")[0]?.trim() || "local"}:${username}`;
+  const ip = `${clientIp(c)}:${username}`;
   if (rateLimited(ip)) return c.json({ error: "Too many attempts." }, 429);
   const user = verifyUser(username, String((body as { password?: string }).password ?? ""));
   if (!user) {
@@ -154,7 +166,7 @@ app.get("/api/auth/me", (c) => {
 app.post("/api/auth/password", async (c) => {
   const user = sessionUser(getCookie(c, COOKIE));
   if (!user) return c.json({ error: "Unauthorized." }, 401);
-  const ip = c.req.header("x-forwarded-for")?.split(",")[0]?.trim() || "local";
+  const ip = clientIp(c);
   if (rateLimited(`${ip}:pw`)) return c.json({ error: "Too many attempts." }, 429);
   const body = await c.req.json().catch(() => ({}));
   const current = String((body as { current?: string }).current ?? "");

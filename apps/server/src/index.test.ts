@@ -42,4 +42,18 @@ describe("server security", () => {
     });
     expect(res.status).toBe(403);
   });
+
+  it("does not let a rotating X-Forwarded-For reset the login limit", async () => {
+    const statuses: number[] = [];
+    for (let i = 0; i < 6; i += 1) {
+      const res = await app.request("/api/auth/login", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-forwarded-for": `203.0.113.${i}` },
+        body: JSON.stringify({ username: "nobody-here", password: "wrong-password-xx" }),
+      });
+      statuses.push(res.status);
+    }
+    expect(statuses.slice(0, 5)).toEqual([401, 401, 401, 401, 401]);
+    expect(statuses[5]).toBe(429);
+  });
 });
