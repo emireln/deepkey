@@ -359,6 +359,12 @@ export const en = {
   pwHintSymbol: "Add a symbol.",
   pwHintCommon: "Avoid common passwords.",
   pwHintName: "Do not include your name.",
+  forgotWarningWeb:
+    "There is no recovery for the master password. If you forget it, the vault cannot be opened. The only way to start over is to delete the DeepKey data on the server. That destroys what is stored there. It does not recover it.",
+  noRecoveryConfirmWeb: "I understand there is no recovery for the master password.",
+  loginRecoveryWarning:
+    "The login password is separate from the master password. If you forget the login password, you cannot reset it in the app. Someone with access to the server can remove the account and create it again. The vault stays, and the master password still opens it.",
+  loginRecoveryConfirm: "I understand I cannot reset this login password from the app.",
 };
 
 export type MessageKey = keyof typeof en;

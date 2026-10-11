@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { MessageKey } from "../i18n/en.js";
 import { AUTO_LOCK_OPTIONS, CLIPBOARD_TIMEOUTS } from "@deepkey/config";
 import { scorePassword } from "@deepkey/validation";
 import { strengthHint, strengthLabel } from "../lib/strength.js";
@@ -10,11 +11,22 @@ import { useVault } from "../state/vault.js";
 import { usePlatform } from "../platform/context.js";
 import { DEFAULT_APP_SETTINGS } from "@deepkey/types";
 
-function RecoveryAck({ checked, onChange }: { checked: boolean; onChange: (value: boolean) => void }) {
+// Each screen names what it covers: the master password on the vault screens, the login password on the web sign-in.
+function RecoveryAck({
+  checked,
+  onChange,
+  warning,
+  label,
+}: {
+  checked: boolean;
+  onChange: (value: boolean) => void;
+  warning: MessageKey;
+  label: MessageKey;
+}) {
   return (
     <div className="recovery-ack">
-      <p className="hint">{t("forgotWarning")}</p>
-      <Checkbox checked={checked} onChange={onChange} label={t("noRecoveryConfirm")} />
+      <p className="hint">{t(warning)}</p>
+      <Checkbox checked={checked} onChange={onChange} label={t(label)} />
     </div>
   );
 }
@@ -51,8 +63,8 @@ export function DesktopOnboarding() {
             <Field label={t("confirmPassword")}>
               <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
             </Field>
-            <RecoveryAck checked={ack} onChange={setAck} />
-            {mismatch ? <p className="error-text">{t("passwordsDoNotMatch")}</p> : null}
+            <RecoveryAck checked={ack} onChange={setAck} warning="forgotWarning" label="noRecoveryConfirm" />
+            {mismatch ?<p className="error-text">{t("passwordsDoNotMatch")}</p> : null}
             <div className="split" style={{ marginTop: 20, justifyContent: "flex-end" }}>
               <Button
                 variant="primary"
@@ -164,7 +176,7 @@ export function WebAuth() {
         <Field label={t("authPassword")}>
           <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
         </Field>
-        {setup ? <RecoveryAck checked={ack} onChange={setAck} /> : null}
+        {setup ? <RecoveryAck checked={ack} onChange={setAck} warning="loginRecoveryWarning" label="loginRecoveryConfirm" /> : null}
         {error ? <p className="error-text">{error}</p> : null}
         <Button variant="primary" disabled={busy || username.length < 3 || password.length < 10 || (setup && !ack)} onClick={submit}>
           {setup ? t("continue") : t("unlock")}
@@ -199,8 +211,8 @@ export function WebVaultSetup() {
         <Field label={t("confirmPassword")}>
           <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
         </Field>
-        <RecoveryAck checked={ack} onChange={setAck} />
-        {error ? <p className="error-text">{error}</p> : null}
+        <RecoveryAck checked={ack} onChange={setAck} warning="forgotWarningWeb" label="noRecoveryConfirmWeb" />
+        {error ?<p className="error-text">{error}</p> : null}
         <Button
           variant="primary"
           disabled={busy || !name.trim() || password.length < 12 || password !== confirm || !ack}

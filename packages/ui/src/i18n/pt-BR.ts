@@ -361,4 +361,10 @@ export const ptBR: Messages = {
   pwHintSymbol: "Adicione um símbolo.",
   pwHintCommon: "Evite senhas comuns.",
   pwHintName: "Não inclua seu nome.",
+  forgotWarningWeb:
+    "Não existe recuperação da senha mestra. Se você esquecê-la, o cofre não poderá ser aberto. A única forma de recomeçar é apagar os dados do DeepKey no servidor. Isso destrói o que está guardado lá. Não recupera.",
+  noRecoveryConfirmWeb: "Entendo que não há recuperação da senha mestra.",
+  loginRecoveryWarning:
+    "A senha de login é separada da senha mestra. Se você esquecer a senha de login, não poderá redefini-la pelo aplicativo. Quem tiver acesso ao servidor pode remover a conta e criá-la de novo. O cofre continua existindo, e a senha mestra ainda o abre.",
+  loginRecoveryConfirm: "Entendo que não posso redefinir esta senha de login pelo aplicativo.",
 };
