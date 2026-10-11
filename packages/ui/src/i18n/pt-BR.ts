@@ -370,4 +370,6 @@ export const ptBR: Messages = {
   setupToken: "Token de configuração",
   setupTokenHelp:
     "O servidor gravou o token em setup.token, na pasta de dados. No Docker: docker compose exec deepkey cat /data/setup.token",
+  pwHintVariety:
+    "Use 20 ou mais caracteres, ou pelo menos três tipos de caractere (maiúsculas, minúsculas, números e símbolos). Evite repetir poucos caracteres.",
 };

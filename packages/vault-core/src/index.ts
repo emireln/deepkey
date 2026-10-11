@@ -35,7 +35,7 @@ import type {
   VaultRevision,
 } from "@deepkey/types";
 import { DEFAULT_APP_SETTINGS, emptyItem, mergeAppSettings } from "@deepkey/types";
-import { backupFileSchema } from "@deepkey/validation";
+import { backupFileSchema, masterPasswordIssue, type PasswordHint } from "@deepkey/validation";
 import type { VaultStore } from "./store.js";
 import { changedFields, matchesQuery, newId, now } from "./util.js";
 
@@ -79,6 +79,14 @@ const HISTORY_FIELDS = [
   "expiresAt",
   "customFields",
 ] as const;
+
+/** A new master password is not acceptable. `hint` says what to change, so the UI can explain it. */
+export class WeakPasswordError extends Error {
+  constructor(readonly hint: PasswordHint) {
+    super("Master password is not strong enough.");
+    this.name = "WeakPasswordError";
+  }
+}
 
 export class VaultIntegrityError extends Error {
   constructor() {
@@ -126,6 +134,8 @@ export class VaultEngine {
     if (await this.hasVault()) {
       throw new Error("A vault already exists.");
     }
+    const issue = masterPasswordIssue(masterPassword);
+    if (issue) throw new WeakPasswordError(issue);
     const created = await createVaultHeader(masterPassword, displayName, options?.kdf ? { kdf: options.kdf } : undefined);
     this.header = created.header;
     this.dek = created.dek;
@@ -183,6 +193,8 @@ export class VaultEngine {
   }
 
   async changeMasterPassword(current: string, next: string): Promise<void> {
+    const issue = masterPasswordIssue(next);
+    if (issue) throw new WeakPasswordError(issue);
     const dek = this.requireDek();
     const header = this.requireHeader();
     const updated = rewrapDek(dek, current, next, header);

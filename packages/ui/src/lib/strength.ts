@@ -18,6 +18,7 @@ const HINT_KEYS: Record<PasswordHint, MessageKey> = {
   symbol: "pwHintSymbol",
   common: "pwHintCommon",
   name: "pwHintName",
+  variety: "pwHintVariety",
 };
 
 export function strengthLabel(strength: PasswordStrength): string {

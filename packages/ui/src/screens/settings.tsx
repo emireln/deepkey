@@ -1,8 +1,8 @@
 import { AUTO_LOCK_OPTIONS, CLIPBOARD_TIMEOUTS, DATABASE_SCHEMA_VERSION, CRYPTO_FORMAT_VERSION, VAULT_FORMAT_VERSION, TRASH_RETENTION } from "@deepkey/config";
 import { DEFAULT_UI_SETTINGS, type AppSettings } from "@deepkey/types";
-import { inspectBackup } from "@deepkey/vault-core";
-import { scorePassword } from "@deepkey/validation";
-import { strengthLabel } from "../lib/strength.js";
+import { inspectBackup, WeakPasswordError } from "@deepkey/vault-core";
+import { masterPasswordIssue, scorePassword } from "@deepkey/validation";
+import { strengthHint, strengthLabel } from "../lib/strength.js";
 import { useEffect, useState } from "react";
 import { AvatarCrop } from "../components/AvatarCrop.js";
 import { Button, Checkbox, Field, Input, Select } from "../components/controls.js";
@@ -44,6 +44,7 @@ export function SettingsScreen({ initial = "general" }: { initial?: Category }) 
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [pendingImport, setPendingImport] = useState<Uint8Array | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
+  const nextIssue = masterPasswordIssue(nextPw);
 
   useEffect(() => {
     platform.storage.getDbPath().then(setDbPath);
@@ -276,16 +277,16 @@ export function SettingsScreen({ initial = "general" }: { initial?: Category }) 
               <Field label={t("newPassword")}>
                 <Input type="password" value={nextPw} onChange={(e) => setNextPw(e.target.value)} />
               </Field>
-              <p className="hint">{strengthLabel(scorePassword(nextPw))}</p>
+              <p className="hint">{nextIssue ? strengthHint(nextIssue) : strengthLabel(scorePassword(nextPw))}</p>
               {passwordError ? <p className="error-text">{passwordError}</p> : null}
               <Button
-                disabled={currentPw.length < 12 || nextPw.length < 12}
+                disabled={currentPw.length < 12 || nextIssue !== null}
                 onClick={async () => {
                   setPasswordError(null);
                   try {
                     await engine.changeMasterPassword(currentPw, nextPw);
-                  } catch {
-                    setPasswordError(t("wrongPassword"));
+                  } catch (err) {
+                    setPasswordError(err instanceof WeakPasswordError ? strengthHint(err.hint) : t("wrongPassword"));
                     return;
                   }
                   setCurrentPw("");

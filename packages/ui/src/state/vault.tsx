@@ -1,5 +1,6 @@
 import { DEFAULT_APP_SETTINGS, mergeAppSettings, type AppSettings, type VaultItem } from "@deepkey/types";
-import { VaultEngine, VaultIntegrityError } from "@deepkey/vault-core";
+import { VaultEngine, VaultIntegrityError, WeakPasswordError } from "@deepkey/vault-core";
+import { strengthHint } from "../lib/strength.js";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { t } from "../i18n/index.js";
 import { setLocale } from "../i18n/index.js";
@@ -131,7 +132,7 @@ export function VaultProvider({ children }: { children: ReactNode }) {
         }
         refresh();
       } catch (err) {
-        setError(err instanceof Error ? err.message : t("errorGeneric"));
+        setError(err instanceof WeakPasswordError ? strengthHint(err.hint) : t("errorGeneric"));
       } finally {
         setBusy(false);
       }

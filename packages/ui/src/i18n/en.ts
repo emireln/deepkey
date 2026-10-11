@@ -368,6 +368,8 @@ export const en = {
   setupToken: "Setup token",
   setupTokenHelp:
     "The server wrote it to setup.token in its data folder. With Docker: docker compose exec deepkey cat /data/setup.token",
+  pwHintVariety:
+    "Use 20 or more characters, or at least three kinds of character (uppercase, lowercase, digits, symbols). Avoid repeating a few characters.",
 };
 
 export type MessageKey = keyof typeof en;

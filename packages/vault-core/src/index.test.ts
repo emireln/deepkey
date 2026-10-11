@@ -271,6 +271,16 @@ describe("vault-core", () => {
     expect(vault.search("NAÏVE").map((h) => h.title)).toEqual(["Naïve token"]);
   });
 
+  it("refuses weak master passwords when creating or changing one", async () => {
+    const store = new MemoryVaultStore();
+    const vault = new VaultEngine(store);
+    await expect(vault.create("aaaaaaaaaaaaaaaaaaaaaaaa", "Dev", { kdf })).rejects.toMatchObject({ hint: "variety" });
+    expect(await store.getHeader()).toBeNull();
+    await vault.create(PASS, "Dev", { kdf });
+    await expect(vault.changeMasterPassword(PASS, "abcdefghijkl")).rejects.toMatchObject({ hint: "variety" });
+    expect(vault.verifyMasterPassword(PASS)).toBe(true);
+  });
+
   it("uses the last value when an env key repeats, in preview, import, and raw save", async () => {
     const { vault } = await ready();
     const project = await vault.createProject("App");

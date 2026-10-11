@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { MessageKey } from "../i18n/en.js";
 import { AUTO_LOCK_OPTIONS, CLIPBOARD_TIMEOUTS } from "@deepkey/config";
-import { scorePassword } from "@deepkey/validation";
+import { masterPasswordIssue, scorePassword } from "@deepkey/validation";
 import { strengthHint, strengthLabel } from "../lib/strength.js";
 import { Logo } from "../components/Logo.js";
 import { LoadingScreen } from "../components/LoadingScreen.js";
@@ -39,6 +39,7 @@ export function DesktopOnboarding() {
   const [confirm, setConfirm] = useState("");
   const [ack, setAck] = useState(false);
   const strength = scorePassword(password, [name]);
+  const issue = masterPasswordIssue(password);
   const mismatch = confirm.length > 0 && password !== confirm;
 
   if (busy) return <LoadingScreen />;
@@ -58,7 +59,7 @@ export function DesktopOnboarding() {
               <div className={`strength s${strength.score}`}>
                 <span style={{ width: `${(strength.score + 1) * 20}%` }} />
               </div>
-              <p className="hint">{strength.hints[0] ? strengthHint(strength.hints[0]) : strengthLabel(strength)}</p>
+              <p className="hint">{issue ? strengthHint(issue) : strengthLabel(strength)}</p>
             </Field>
             <Field label={t("confirmPassword")}>
               <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
@@ -68,7 +69,7 @@ export function DesktopOnboarding() {
             <div className="split" style={{ marginTop: 20, justifyContent: "flex-end" }}>
               <Button
                 variant="primary"
-                disabled={!name.trim() || password.length < 12 || password !== confirm || !ack}
+                disabled={!name.trim() || issue !== null || password !== confirm || !ack}
                 onClick={() => setStep(1)}
               >
                 {t("next")}
@@ -204,6 +205,7 @@ export function WebVaultSetup() {
   const [confirm, setConfirm] = useState("");
   const [ack, setAck] = useState(false);
   const strength = scorePassword(password, [name]);
+  const issue = masterPasswordIssue(password);
   if (busy) return <LoadingScreen />;
   return (
     <div className="auth-screen">
@@ -218,6 +220,7 @@ export function WebVaultSetup() {
           <div className={`strength s${strength.score}`}>
             <span style={{ width: `${(strength.score + 1) * 20}%` }} />
           </div>
+          <p className="hint">{issue ? strengthHint(issue) : strengthLabel(strength)}</p>
         </Field>
         <Field label={t("confirmPassword")}>
           <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
@@ -226,7 +229,7 @@ export function WebVaultSetup() {
         {error ?<p className="error-text">{error}</p> : null}
         <Button
           variant="primary"
-          disabled={busy || !name.trim() || password.length < 12 || password !== confirm || !ack}
+          disabled={busy || !name.trim() || issue !== null || password !== confirm || !ack}
           onClick={() => createVault(password, name.trim())}
         >
           {t("createVaultAction")}

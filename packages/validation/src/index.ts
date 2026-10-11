@@ -80,7 +80,13 @@ export const usernameSchema = z
 
 export const authPasswordSchema = z.string().min(10).max(200);
 
-export const masterPasswordSchema = z.string().min(12).max(200);
+export const masterPasswordSchema = z
+  .string()
+  .min(12)
+  .max(200)
+  .refine((value) => masterPasswordIssue(value) === null, {
+    message: "Choose a longer or more varied master password.",
+  });
 
 export const itemTypeSchema = z.enum([
   "api_key",
@@ -158,7 +164,7 @@ const COMMON = new Set([
 ]);
 
 /** Codes, not sentences, so the UI can translate them. */
-export type PasswordHint = "length" | "lowercase" | "uppercase" | "number" | "symbol" | "common" | "name";
+export type PasswordHint = "length" | "lowercase" | "uppercase" | "number" | "symbol" | "common" | "name" | "variety";
 
 export interface PasswordStrength {
   score: 0 | 1 | 2 | 3 | 4;
@@ -193,6 +199,21 @@ export function scorePassword(password: string, extras: string[] = []): Password
 
   const labels = ["very weak", "weak", "fair", "strong", "excellent"] as const;
   return { score, label: labels[score], hints };
+}
+
+/**
+ * The master password encrypts the whole vault and nothing can reset it, so the bar is higher than
+ * scorePassword's. Returns the first problem, or null when the password is acceptable.
+ */
+export function masterPasswordIssue(password: string): PasswordHint | null {
+  if (password.length < 12) return "length";
+  // A few repeated characters pass a length check but are easy to guess.
+  if (new Set(password).size < 8) return "variety";
+  const kinds = [/[a-z]/, /[A-Z]/, /[0-9]/, /[^A-Za-z0-9]/].filter((re) => re.test(password)).length;
+  // Twenty characters is a passphrase. Shorter passwords need three kinds of character.
+  if (password.length < 20 && kinds < 3) return "variety";
+  if (COMMON.has(password.toLowerCase())) return "common";
+  return null;
 }
 
 export function safeFilename(name: string): string {

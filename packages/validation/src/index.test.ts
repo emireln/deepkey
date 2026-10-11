@@ -1,7 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { assertNoPathTraversal, formatHint, opaqueIdSchema, parseOpaqueId, safeFilename, scorePassword } from "./index.js";
+import {
+  assertNoPathTraversal,
+  formatHint,
+  masterPasswordIssue,
+  masterPasswordSchema,
+  opaqueIdSchema,
+  parseOpaqueId,
+  safeFilename,
+  scorePassword,
+} from "./index.js";
 
 describe("validation", () => {
+  it("accepts a varied password or a long passphrase, and refuses repetitive ones", () => {
+    expect(masterPasswordIssue("short")).toBe("length");
+    expect(masterPasswordIssue("aaaaaaaaaaaaaaaaaaaaaaaa")).toBe("variety");
+    expect(masterPasswordIssue("abcabcabcabc")).toBe("variety");
+    expect(masterPasswordIssue("password12345")).toBe("variety");
+    expect(masterPasswordIssue("Correct-Horse-9")).toBeNull();
+    expect(masterPasswordIssue("correct horse battery staple")).toBeNull();
+    expect(masterPasswordSchema.safeParse("aaaaaaaaaaaaaaaaaaaaaaaa").success).toBe(false);
+    expect(masterPasswordSchema.safeParse("Correct-Horse-9").success).toBe(true);
+  });
+
   it("scores passwords", () => {
     expect(scorePassword("short").score).toBeLessThan(2);
     expect(scorePassword("Correct-Horse-Battery-Staple-99").score).toBeGreaterThan(2);
