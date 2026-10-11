@@ -1,5 +1,5 @@
 import { AUTO_LOCK_OPTIONS, CLIPBOARD_TIMEOUTS, DATABASE_SCHEMA_VERSION, CRYPTO_FORMAT_VERSION, VAULT_FORMAT_VERSION, TRASH_RETENTION } from "@deepkey/config";
-import { DEFAULT_APP_SETTINGS, type AppSettings } from "@deepkey/types";
+import { DEFAULT_UI_SETTINGS, type AppSettings } from "@deepkey/types";
 import { inspectBackup } from "@deepkey/vault-core";
 import { scorePassword } from "@deepkey/validation";
 import { useEffect, useState } from "react";
@@ -39,6 +39,10 @@ export function SettingsScreen({ initial = "general" }: { initial?: Category }) 
   const [loginNext, setLoginNext] = useState("");
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [confirmPw, setConfirmPw] = useState("");
+  const [wipeError, setWipeError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [pendingImport, setPendingImport] = useState<Uint8Array | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
 
   useEffect(() => {
     platform.storage.getDbPath().then(setDbPath);
@@ -267,10 +271,17 @@ export function SettingsScreen({ initial = "general" }: { initial?: Category }) 
                 <Input type="password" value={nextPw} onChange={(e) => setNextPw(e.target.value)} />
               </Field>
               <p className="hint">{scorePassword(nextPw).label}</p>
+              {passwordError ? <p className="error-text">{passwordError}</p> : null}
               <Button
                 disabled={currentPw.length < 12 || nextPw.length < 12}
                 onClick={async () => {
-                  await engine.changeMasterPassword(currentPw, nextPw);
+                  setPasswordError(null);
+                  try {
+                    await engine.changeMasterPassword(currentPw, nextPw);
+                  } catch {
+                    setPasswordError(t("wrongPassword"));
+                    return;
+                  }
                   setCurrentPw("");
                   setNextPw("");
                   toast(t("saved"));
@@ -336,11 +347,10 @@ export function SettingsScreen({ initial = "general" }: { initial?: Category }) 
                 <Button
                   onClick={async () => {
                     const file = await platform.files.open([{ name: "DeepKey vault", extensions: ["deepkeyvault", "json"] }]);
-                    if (!file) return;
-                    const json = JSON.parse(new TextDecoder().decode(file.bytes));
-                    await engine.importBackup(json);
-                    toast(t("imported"));
-                    lock();
+                    if (file) {
+                      setImportError(null);
+                      setPendingImport(file.bytes);
+                    }
                   }}
                 >
                   {t("importBackup")}
@@ -360,6 +370,7 @@ export function SettingsScreen({ initial = "general" }: { initial?: Category }) 
                   {t("verifyBackup")}
                 </Button>
               </div>
+              {importError ? <p className="error-text">{importError}</p> : null}
               <p className="hint" style={{ marginTop: 12 }}>
                 {t("noRecovery")}
               </p>
@@ -430,7 +441,8 @@ export function SettingsScreen({ initial = "general" }: { initial?: Category }) 
               </p>
               <Button
                 onClick={async () => {
-                  await patch(DEFAULT_APP_SETTINGS);
+                  // Only the interface section. Security and backup settings stay as they are.
+                  await patch({ ...settings, ui: DEFAULT_UI_SETTINGS });
                   toast(t("saved"));
                 }}
               >
@@ -471,6 +483,29 @@ export function SettingsScreen({ initial = "general" }: { initial?: Category }) 
           {cat === "about" ? <AboutBody /> : null}
         </div>
       </div>
+      {pendingImport ? (
+        <Dialog
+          title={t("replaceVaultTitle")}
+          body={t("replaceVaultBody")}
+          confirm={t("importBackup")}
+          danger
+          onCancel={() => setPendingImport(null)}
+          onConfirm={async () => {
+            const bytes = pendingImport;
+            setPendingImport(null);
+            try {
+              await engine.importBackup(JSON.parse(new TextDecoder().decode(bytes)));
+            } catch {
+              setImportError(t("backupInvalid"));
+              return;
+            }
+            // The stored OS-unlock key belonged to the vault that was just replaced.
+            await platform.osUnlock?.clear();
+            toast(t("imported"));
+            lock();
+          }}
+        />
+      ) : null}
       {deleteOpen ? (
         <div className="dialog-backdrop">
           <div className="dialog">
@@ -479,12 +514,19 @@ export function SettingsScreen({ initial = "general" }: { initial?: Category }) 
             <Field label={t("masterPassword")}>
               <Input type="password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} />
             </Field>
+            {wipeError ? <p className="error-text">{wipeError}</p> : null}
             <div className="dialog-actions">
               <Button onClick={() => setDeleteOpen(false)}>{t("cancel")}</Button>
               <Button
                 variant="danger-solid"
                 onClick={async () => {
-                  await engine.wipe(confirmPw);
+                  setWipeError(null);
+                  try {
+                    await engine.wipe(confirmPw);
+                  } catch {
+                    setWipeError(t("wrongPassword"));
+                    return;
+                  }
                   window.location.reload();
                 }}
               >
@@ -661,5 +703,3 @@ export function SecurityScreen() {
     </div>
   );
 }
-
-void Dialog;

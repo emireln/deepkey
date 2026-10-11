@@ -117,6 +117,7 @@ export function NotesCreateScreen() {
 
 export function FilesManagerScreen() {
   const { engine, refresh, settings, tick } = useVault();
+  const toast = useToast();
   void tick;
   const platform = usePlatform();
   const navigate = useNavigate();
@@ -131,7 +132,7 @@ export function FilesManagerScreen() {
             const file = await platform.files.open();
             if (!file) return;
             if (file.bytes.byteLength > settings.security.maxAttachmentBytes) {
-              window.alert(t("fileTooBig"));
+              toast(t("fileTooBig"));
               return;
             }
             const item = await engine.createItem({

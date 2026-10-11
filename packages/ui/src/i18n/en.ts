@@ -236,7 +236,7 @@ export const en = {
   backupDue: "Encrypted backup is overdue.",
   backupNow: "Back up now",
   verifyBackup: "Verify backup file",
-  backupValid: "Backup file looks intact.",
+  backupValid: "The file has a valid DeepKey backup structure. Its master password is checked on import.",
   backupInvalid: "That file is not a valid DeepKey backup.",
   notifyExpiring: "Notify when items are expiring",
   allowNamesInNotifications: "Include secret names in notifications",
@@ -286,6 +286,10 @@ export const en = {
   fixLinesFirst: "Fix these lines before saving.",
   lineNumber: "Line",
   linesSkipped: "These lines are not valid and will be skipped.",
+  replaceVaultTitle: "Replace this vault?",
+  replaceVaultBody: "Everything in this vault will be replaced by the backup. Afterwards you unlock with that backup's master password.",
+  osUnlockFailed: "This device could not unlock the vault. Use your master password.",
+  vaultIntegrity: "The vault data failed an integrity check. Nothing was changed.",
 };
 
 export type MessageKey = keyof typeof en;

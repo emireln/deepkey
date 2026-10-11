@@ -238,7 +238,7 @@ export const ptBR: Messages = {
   backupDue: "O backup criptografado está atrasado.",
   backupNow: "Fazer backup agora",
   verifyBackup: "Verificar arquivo de backup",
-  backupValid: "O arquivo de backup parece intacto.",
+  backupValid: "O arquivo tem estrutura válida de backup do DeepKey. A senha mestra é verificada na importação.",
   backupInvalid: "Esse arquivo não é um backup válido do DeepKey.",
   notifyExpiring: "Avisar quando itens estiverem expirando",
   allowNamesInNotifications: "Incluir nomes de segredos nas notificações",
@@ -288,4 +288,8 @@ export const ptBR: Messages = {
   fixLinesFirst: "Corrija estas linhas antes de salvar.",
   lineNumber: "Linha",
   linesSkipped: "Estas linhas não são válidas e serão ignoradas.",
+  replaceVaultTitle: "Substituir este cofre?",
+  replaceVaultBody: "Tudo neste cofre será substituído pelo backup. Depois, você desbloqueia com a senha mestra desse backup.",
+  osUnlockFailed: "Este dispositivo não conseguiu desbloquear o cofre. Use sua senha mestra.",
+  vaultIntegrity: "Os dados do cofre falharam na verificação de integridade. Nada foi alterado.",
 };

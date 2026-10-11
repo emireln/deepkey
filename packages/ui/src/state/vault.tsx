@@ -1,5 +1,5 @@
 import { DEFAULT_APP_SETTINGS, mergeAppSettings, type AppSettings, type VaultItem } from "@deepkey/types";
-import { VaultEngine } from "@deepkey/vault-core";
+import { VaultEngine, VaultIntegrityError } from "@deepkey/vault-core";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { t } from "../i18n/index.js";
 import { setLocale } from "../i18n/index.js";
@@ -132,7 +132,6 @@ export function VaultProvider({ children }: { children: ReactNode }) {
         refresh();
       } catch (err) {
         setError(err instanceof Error ? err.message : t("errorGeneric"));
-        throw err;
       } finally {
         setBusy(false);
       }
@@ -152,9 +151,8 @@ export function VaultProvider({ children }: { children: ReactNode }) {
           if (dek) await platform.osUnlock.storeDek(dek);
         }
         refresh();
-      } catch {
-        setError(t("wrongPassword"));
-        throw new Error(t("wrongPassword"));
+      } catch (err) {
+        setError(err instanceof VaultIntegrityError ? t("vaultIntegrity") : t("wrongPassword"));
       } finally {
         setBusy(false);
       }
@@ -166,7 +164,14 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     if (!platform.osUnlock) return false;
     const dek = await platform.osUnlock.loadDek();
     if (!dek) return false;
-    await engineRef.current.unlockWithDek(dek);
+    try {
+      await engineRef.current.unlockWithDek(dek);
+    } catch {
+      // The stored key no longer opens this vault, for example after a restore. Forget it.
+      await platform.osUnlock.clear();
+      setError(t("osUnlockFailed"));
+      return false;
+    }
     setUnlocked(true);
     refresh();
     return true;
