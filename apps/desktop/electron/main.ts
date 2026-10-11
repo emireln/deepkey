@@ -168,6 +168,16 @@ function pruneBackups(dir: string): void {
   }
 }
 
+function settingsLockOnExit(): boolean {
+  try {
+    const raw = store?.getKv("settings");
+    if (!raw) return true;
+    return JSON.parse(raw)?.security?.lockOnExit !== false;
+  } catch {
+    return true;
+  }
+}
+
 function settingsWantTray(): boolean {
   try {
     const raw = store?.getKv("settings");
@@ -271,6 +281,8 @@ function createWindow(): void {
       event.preventDefault();
       win.setSkipTaskbar(true);
       win.hide();
+      // Hiding keeps the process, and the unlocked vault, alive. Lock it, unless the user turned that off.
+      if (settingsLockOnExit()) win.webContents.send("lock");
     }
   });
   mainWindow.on("blur", () => mainWindow?.webContents.send("window:blur"));

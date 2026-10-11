@@ -94,7 +94,9 @@ export function SettingsScreen({ initial = "general" }: { initial?: Category }) 
               <Field label={t("defaultProject")}>
                 <Select
                   value={settings.ui.defaultProjectId ?? ""}
-                  onChange={(e) => patch({ ...settings, ui: { ...settings.ui, defaultProjectId: e.target.value || null } })}
+                  onChange={(e) =>
+                    patch({ ...settings, ui: { ...settings.ui, defaultProjectId: e.target.value || null, defaultEnvironmentId: null } })
+                  }
                 >
                   <option value="">{t("none")}</option>
                   {engine.projects().map((p) => (
@@ -107,10 +109,11 @@ export function SettingsScreen({ initial = "general" }: { initial?: Category }) 
               <Field label={t("defaultEnvironment")}>
                 <Select
                   value={settings.ui.defaultEnvironmentId ?? ""}
+                  disabled={!settings.ui.defaultProjectId}
                   onChange={(e) => patch({ ...settings, ui: { ...settings.ui, defaultEnvironmentId: e.target.value || null } })}
                 >
                   <option value="">{t("none")}</option>
-                  {engine.environments(settings.ui.defaultProjectId ?? undefined).map((e) => (
+                  {(settings.ui.defaultProjectId ? engine.environments(settings.ui.defaultProjectId) : []).map((e) => (
                     <option key={e.id} value={e.id}>
                       {e.name}
                     </option>
@@ -170,8 +173,10 @@ export function SettingsScreen({ initial = "general" }: { initial?: Category }) 
               </Field>
               <div className="checkbox-stack">
                 <Checkbox checked={settings.security.lockOnSleep} onChange={(v) => patch({ ...settings, security: { ...settings.security, lockOnSleep: v } })} label={t("lockOnSleep")} />
-                <Checkbox checked={settings.security.lockOnDesktopLock} onChange={(v) => patch({ ...settings, security: { ...settings.security, lockOnDesktopLock: v } })} label="Lock when the desktop locks" />
-                <Checkbox checked={settings.security.lockOnExit} onChange={(v) => patch({ ...settings, security: { ...settings.security, lockOnExit: v } })} label="Lock when DeepKey exits" />
+                <Checkbox checked={settings.security.lockOnDesktopLock} onChange={(v) => patch({ ...settings, security: { ...settings.security, lockOnDesktopLock: v } })} label={t("lockOnDesktopLock")} />
+                {platform.kind === "desktop" ? (
+                  <Checkbox checked={settings.security.lockOnExit} onChange={(v) => patch({ ...settings, security: { ...settings.security, lockOnExit: v } })} label={t("lockOnExit")} />
+                ) : null}
                 <Checkbox checked={settings.security.lockOnBackground} onChange={(v) => patch({ ...settings, security: { ...settings.security, lockOnBackground: v } })} label={t("lockOnBackground")} />
                 <Checkbox checked={settings.security.privacyMode} onChange={(v) => patch({ ...settings, security: { ...settings.security, privacyMode: v } })} label={t("privacyMode")} />
                 {platform.kind === "desktop" ? (
@@ -627,18 +632,6 @@ export function ProfileScreen() {
       </div>
       <Field label={t("displayName")}>
         <Input value={name} onChange={(e) => setName(e.target.value)} />
-      </Field>
-      <Field label={t("language")}>
-        <Select
-          value={profile.locale}
-          onChange={async (e) => {
-            await engine.saveProfile({ ...profile, locale: e.target.value as "en" | "pt-BR" });
-            refresh();
-          }}
-        >
-          <option value="en">English</option>
-          <option value="pt-BR">Português (Brasil)</option>
-        </Select>
       </Field>
       <Button
         variant="primary"

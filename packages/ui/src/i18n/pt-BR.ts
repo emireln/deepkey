@@ -291,4 +291,6 @@ export const ptBR: Messages = {
   replaceVaultBody: "Tudo neste cofre será substituído pelo backup. Depois, você desbloqueia com a senha mestra desse backup.",
   osUnlockFailed: "Este dispositivo não conseguiu desbloquear o cofre. Use sua senha mestra.",
   vaultIntegrity: "Os dados do cofre falharam na verificação de integridade. Nada foi alterado.",
+  lockOnDesktopLock: "Bloquear quando o computador for bloqueado",
+  lockOnExit: "Bloquear quando a janela for fechada para a bandeja",
 };

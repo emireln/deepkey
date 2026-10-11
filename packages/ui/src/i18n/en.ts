@@ -289,6 +289,8 @@ export const en = {
   replaceVaultBody: "Everything in this vault will be replaced by the backup. Afterwards you unlock with that backup's master password.",
   osUnlockFailed: "This device could not unlock the vault. Use your master password.",
   vaultIntegrity: "The vault data failed an integrity check. Nothing was changed.",
+  lockOnDesktopLock: "Lock when the desktop locks",
+  lockOnExit: "Lock when the window closes to the tray",
 };
 
 export type MessageKey = keyof typeof en;
