@@ -72,8 +72,20 @@ export function openDatabase(filePath: string) {
   sqlite.pragma("journal_mode = WAL");
   sqlite.pragma("foreign_keys = ON");
   sqlite.pragma("busy_timeout = 5000");
+  // Zero freed pages on delete, so ciphertext does not linger in the file after a row is removed.
+  sqlite.pragma("secure_delete = ON");
   migrate(sqlite);
   return { sqlite, db: drizzle(sqlite, { schema }) };
+}
+
+/**
+ * Deleted rows still exist in the WAL and in pages the file has not reclaimed yet. Checkpoint, rebuild
+ * the file, then checkpoint again so the old frames are gone from disk.
+ */
+function scrubDeletedRows(sqlite: Database.Database): void {
+  sqlite.pragma("wal_checkpoint(TRUNCATE)");
+  sqlite.exec("VACUUM");
+  sqlite.pragma("wal_checkpoint(TRUNCATE)");
 }
 
 export function migrate(sqlite: Database.Database): void {
@@ -169,6 +181,7 @@ export function sqliteVaultStore(filePath: string) {
         for (const attachment of attachments) insertAtt.run(attachment);
       });
       tx();
+      scrubDeletedRows(sqlite);
     },
     async wipe(): Promise<void> {
       const tx = sqlite.transaction(() => {
@@ -178,6 +191,7 @@ export function sqliteVaultStore(filePath: string) {
         sqlite.prepare("DELETE FROM kv").run();
       });
       tx();
+      scrubDeletedRows(sqlite);
     },
     getKv(key: string): string | null {
       const row = sqlite.prepare("SELECT value FROM kv WHERE key = ?").get(key) as { value: string } | undefined;
