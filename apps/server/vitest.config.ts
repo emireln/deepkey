@@ -4,6 +4,7 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.test.ts"],
+    globalSetup: ["./vitest.global-setup.ts"],
     env: { VITEST: "true", DEEPKEY_DATA_DIR: "./tmp-test-data" },
   },
 });

@@ -33,25 +33,23 @@ export function hashToken(token: string): string {
   return sha256Hex(`${SESSION_SECRET}:${token}`);
 }
 
-const attempts = new Map<string, number[]>();
-
+// Failed attempts live in SQLite, so a restart does not reset the limit.
 export function rateLimited(key: string): boolean {
-  const now = Date.now();
-  const list = (attempts.get(key) ?? []).filter((t) => now - t < AUTH_WINDOW_MS);
-  attempts.set(key, list);
-  return list.length >= AUTH_MAX_ATTEMPTS;
+  const row = store.sqlite
+    .prepare("SELECT COUNT(*) AS n FROM auth_attempts WHERE key = ? AND at > ?")
+    .get(key, Date.now() - AUTH_WINDOW_MS) as { n: number };
+  return row.n >= AUTH_MAX_ATTEMPTS;
 }
 
 export function recordAttempt(key: string, success: boolean): void {
-  const now = Date.now();
-  if (!success) {
-    const list = attempts.get(key) ?? [];
-    list.push(now);
-    attempts.set(key, list);
-  } else {
-    attempts.delete(key);
+  if (success) {
+    store.sqlite.prepare("DELETE FROM auth_attempts WHERE key = ?").run(key);
+    return;
   }
-  store.sqlite.prepare("INSERT INTO auth_attempts (key, at, success) VALUES (?, ?, ?)").run(key, now, success ? 1 : 0);
+  const now = Date.now();
+  store.sqlite.prepare("INSERT INTO auth_attempts (key, at, success) VALUES (?, ?, 0)").run(key, now);
+  // Failures outside the window no longer count, so they are not kept.
+  store.sqlite.prepare("DELETE FROM auth_attempts WHERE at <= ?").run(now - AUTH_WINDOW_MS);
 }
 
 export function userCount(): number {
@@ -108,6 +106,8 @@ function sameHash(a: string, b: string): boolean {
 export function createSession(userId: string): { token: string; expiresAt: number } {
   const token = bytesToB64(randomBytes(32));
   const expiresAt = Date.now() + SESSION_MAX_AGE_MS;
+  // Expired sessions are refused on use anyway. Remove them here so the table does not grow forever.
+  store.sqlite.prepare("DELETE FROM sessions WHERE expires_at < ?").run(Date.now());
   store.sqlite
     .prepare("INSERT INTO sessions (id, user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?, ?)")
     .run(crypto.randomUUID(), userId, hashToken(token), expiresAt, Date.now());
