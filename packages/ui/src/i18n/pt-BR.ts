@@ -283,4 +283,9 @@ export const ptBR: Messages = {
   zoom: "Zoom",
   dragToReposition: "Arraste para mover. Use o zoom para enquadrar e salve.",
   avatarFailed: "Não foi possível carregar essa imagem.",
+  invalidEnvKey: "Use letras, números, sublinhados ou pontos, começando por letra ou sublinhado.",
+  envKeyExists: "Essa chave já existe neste ambiente.",
+  fixLinesFirst: "Corrija estas linhas antes de salvar.",
+  lineNumber: "Linha",
+  linesSkipped: "Estas linhas não são válidas e serão ignoradas.",
 };

@@ -281,6 +281,11 @@ export const en = {
   zoom: "Zoom",
   dragToReposition: "Drag to move. Zoom to frame the shot, then save.",
   avatarFailed: "That image could not be loaded.",
+  invalidEnvKey: "Use letters, numbers, underscores, or dots, and start with a letter or underscore.",
+  envKeyExists: "That key already exists in this environment.",
+  fixLinesFirst: "Fix these lines before saving.",
+  lineNumber: "Line",
+  linesSkipped: "These lines are not valid and will be skipped.",
 };
 
 export type MessageKey = keyof typeof en;

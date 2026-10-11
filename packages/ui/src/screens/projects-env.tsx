@@ -97,6 +97,11 @@ export function ProjectDetailScreen() {
   const [name, setName] = useState(project?.name ?? "");
   const [newEnv, setNewEnv] = useState("");
   const [confirm, setConfirm] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  // Keep the environment picker on this project when the route switches to another project.
+  useEffect(() => {
+    setEnvId(engine.environments(id ?? "")[0]?.id ?? "");
+  }, [id]);
   if (!project) return <p>{t("errorGeneric")}</p>;
   const vars = envId ? engine.envItems(project.id, envId) : [];
   return (
@@ -169,7 +174,7 @@ export function ProjectDetailScreen() {
         >
           {t("createEnv")}
         </Button>
-        <Button variant="primary" onClick={() => navigate(`/new?type=env_var&project=${project.id}&env=${envId}`)}>
+        <Button variant="primary" disabled={!envId} onClick={() => setAddOpen(true)}>
           {t("addVariable")}
         </Button>
       </div>
@@ -186,8 +191,11 @@ export function ProjectDetailScreen() {
           ))}
         </div>
       ) : (
-        <EmptyState title={t("noSecrets")} actions={<Button variant="primary" onClick={() => navigate(`/new?type=env_var&project=${project.id}&env=${envId}`)}>{t("addVariable")}</Button>} />
+        <EmptyState title={t("noSecrets")} actions={<Button variant="primary" disabled={!envId} onClick={() => setAddOpen(true)}>{t("addVariable")}</Button>} />
       )}
+      {addOpen && envId ? (
+        <AddVariableDialog projectId={project.id} environmentId={envId} onClose={() => setAddOpen(false)} />
+      ) : null}
       {confirm ? (
         <Dialog
           title={t("confirmDelete")}
@@ -202,6 +210,58 @@ export function ProjectDetailScreen() {
           }}
         />
       ) : null}
+    </div>
+  );
+}
+
+/** Adds one env var to an environment. The key uses the same rules as a .env file. */
+function AddVariableDialog({ projectId, environmentId, onClose }: { projectId: string; environmentId: string; onClose: () => void }) {
+  const { engine, refresh } = useVault();
+  const [name, setName] = useState("");
+  const [value, setValue] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  async function save() {
+    const key = name.trim();
+    if (parseEnv(`${key}=`).errors.length) {
+      setError(t("invalidEnvKey"));
+      return;
+    }
+    if (engine.envItems(projectId, environmentId).some((item) => item.name === key)) {
+      setError(t("envKeyExists"));
+      return;
+    }
+    await engine.createItem({ type: "env_var", name: key, projectId, environmentId, fields: { value } });
+    refresh();
+    onClose();
+  }
+
+  return (
+    <div className="dialog-backdrop" onClick={onClose} role="presentation">
+      <div className="dialog" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+        <h2>{t("addVariable")}</h2>
+        <Field label={t("key")}>
+          <Input
+            mono
+            value={name}
+            autoFocus
+            onChange={(e) => {
+              setName(e.target.value);
+              setError(null);
+            }}
+          />
+        </Field>
+        <Field label={t("value")}>
+          <Textarea mono value={value} onChange={(e) => setValue(e.target.value)} />
+        </Field>
+        {error ? <p className="error-text">{error}</p> : null}
+        <div className="dialog-actions">
+          <Button onClick={onClose}>{t("cancel")}</Button>
+          <Button variant="primary" disabled={!name.trim()} onClick={() => void save()}>
+            {t("save")}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -225,6 +285,7 @@ export function EnvFilesScreen() {
   const [pwOpen, setPwOpen] = useState(false);
   const [pwError, setPwError] = useState<string | null>(null);
   const [pendingPlaintext, setPendingPlaintext] = useState<"copy" | "export" | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
   const platform = usePlatform();
   const envs = projectId ? engine.environments(projectId) : [];
   useEffect(() => {
@@ -247,7 +308,7 @@ export function EnvFilesScreen() {
   const visibleDiff = hideSame ? diff.filter((row) => row.status !== "same") : diff;
 
   async function applyRaw() {
-    if (!projectId || !envId) return;
+    if (!projectId || !envId || parsed.errors.length) return;
     await engine.replaceEnvFromRaw(projectId, envId, raw);
     refresh();
     toast(t("saved"));
@@ -330,11 +391,11 @@ export function EnvFilesScreen() {
               {t("raw")}
             </Button>
             {mode === "raw" ? (
-              <Button variant="primary" onClick={applyRaw}>
+              <Button variant="primary" disabled={parsed.errors.length > 0} onClick={applyRaw}>
                 {t("save")}
               </Button>
             ) : (
-              <Button variant="primary" onClick={() => navigate(`/new?type=env_var&project=${projectId}&env=${envId}`)}>
+              <Button variant="primary" disabled={!envId} onClick={() => setAddOpen(true)}>
                 {t("addVariable")}
               </Button>
             )}
@@ -375,6 +436,16 @@ export function EnvFilesScreen() {
               {t("duplicateKey")}: {parsed.duplicates.join(", ")}
             </p>
           ) : null}
+          {mode === "raw" && parsed.errors.length ? (
+            <div className="error-text">
+              <p>{t("fixLinesFirst")}</p>
+              {parsed.errors.map((e) => (
+                <p key={e.line}>
+                  {t("lineNumber")} {e.line}: {e.message}
+                </p>
+              ))}
+            </div>
+          ) : null}
           {mode === "raw" ? (
             <Suspense fallback={<p className="hint">{t("loading")}</p>}>
               <EnvEditor value={raw} onChange={setRaw} duplicates={parsed.duplicates} />
@@ -396,7 +467,7 @@ export function EnvFilesScreen() {
               title={t("noSecrets")}
               actions={
                 <>
-                  <Button variant="primary" onClick={() => navigate(`/new?type=env_var&project=${projectId}&env=${envId}`)}>
+                  <Button variant="primary" disabled={!envId} onClick={() => setAddOpen(true)}>
                     {t("addVariable")}
                   </Button>
                   <Button onClick={() => navigate("/env/import")}>{t("importEnv")}</Button>
@@ -406,6 +477,9 @@ export function EnvFilesScreen() {
           )}
         </>
       )}
+      {addOpen && envId ? (
+        <AddVariableDialog projectId={projectId} environmentId={envId} onClose={() => setAddOpen(false)} />
+      ) : null}
       {exportOpen ? (
         <div className="dialog-backdrop" role="presentation" onClick={() => setExportOpen(false)}>
           <div className="dialog" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
@@ -488,7 +562,13 @@ export function EnvImportScreen() {
       </button>
       <h1 className="page-title">{t("importEnv")}</h1>
       <div className="toolbar">
-        <Select value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+        <Select
+          value={projectId}
+          onChange={(e) => {
+            setProjectId(e.target.value);
+            setEnvId(engine.environments(e.target.value)[0]?.id ?? "");
+          }}
+        >
           {engine.projects().map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
@@ -528,6 +608,21 @@ export function EnvImportScreen() {
           <p className="page-sub" style={{ marginTop: 20 }}>
             {preview.created.length} {t("newVars")} · {preview.existing.length} {t("existingVars")} · {preview.changed.length} {t("changedVars")}
           </p>
+          {preview.parsed.duplicates.length ? (
+            <p className="hint">
+              {t("duplicateKey")}: {preview.parsed.duplicates.join(", ")}
+            </p>
+          ) : null}
+          {preview.parsed.errors.length ? (
+            <div className="error-text">
+              <p>{t("linesSkipped")}</p>
+              {preview.parsed.errors.map((e) => (
+                <p key={e.line}>
+                  {t("lineNumber")} {e.line}: {e.message}
+                </p>
+              ))}
+            </div>
+          ) : null}
           <div className="split" style={{ marginBottom: 12 }}>
             <Button onClick={() => setMode("skip")}>{t("skipDuplicates")}</Button>
             <Button onClick={() => setMode("replace")}>{t("replace")}</Button>
