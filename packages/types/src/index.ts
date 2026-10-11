@@ -132,7 +132,6 @@ export interface VaultProfile {
   displayName: string;
   avatarDataUrl: string | null;
   locale: Locale;
-  timeFormat: "12h" | "24h";
 }
 
 export type VaultDocument =

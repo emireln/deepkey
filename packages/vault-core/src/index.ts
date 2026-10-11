@@ -136,7 +136,6 @@ export class VaultEngine {
       displayName,
       avatarDataUrl: null,
       locale: "en",
-      timeFormat: "24h",
     };
     await this.putDocument(profile);
     const personal = await this.createProject("Personal", "Default project");
