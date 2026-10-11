@@ -135,7 +135,8 @@ export function createWebPlatform(): PlatformAdapter {
         a.href = url;
         a.download = filename;
         a.click();
-        URL.revokeObjectURL(url);
+        // Revoking straight away can cancel the download in some browsers. Give it time to start.
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
         return true;
       },
     },

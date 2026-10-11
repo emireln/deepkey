@@ -47,16 +47,6 @@ export function mask(value: string): string {
   return "•".repeat(Math.min(24, Math.max(8, value.length)));
 }
 
-export function downloadBytes(filename: string, bytes: Uint8Array, mime = "application/octet-stream"): void {
-  const blob = new Blob([bytes.slice()], { type: mime });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
 export function bytesFromText(text: string): Uint8Array {
   return new TextEncoder().encode(text);
 }
