@@ -178,7 +178,8 @@ export function serializeEnv(entries: EnvEntry[]): string {
     if (!entry.enabled) continue;
     const assignment = `${entry.key}=${serializeValue(entry.value)}`;
     if (entry.comment) {
-      lines.push(`${assignment} # ${entry.comment}`);
+      // A newline would end the comment and leave the rest as a new line in the file.
+      lines.push(`${assignment} # ${entry.comment.replace(/[\r\n]+/g, " ")}`);
     } else {
       lines.push(assignment);
     }
@@ -207,7 +208,8 @@ export function serializeCompose(entries: EnvEntry[]): string {
   const lines = ["environment:"];
   for (const entry of entries) {
     if (!entry.enabled) continue;
-    lines.push(`  ${entry.key}: ${JSON.stringify(entry.value)}`);
+    // Compose interpolates ${NAME} in environment values, so a literal $ has to be written as $$.
+    lines.push(`  ${entry.key}: ${JSON.stringify(entry.value).replace(/\$/g, "$$$$")}`);
   }
   if (lines.length === 1) lines.push("  {}");
   return `${lines.join("\n")}\n`;

@@ -150,6 +150,27 @@ describe("vault-core", () => {
     expect(vault.unlocked).toBe(false);
   });
 
+  it("uses the last value when an env key repeats, in preview, import, and raw save", async () => {
+    const { vault } = await ready();
+    const project = await vault.createProject("App");
+    const env = await vault.createEnvironment(project.id, "Development");
+    const source = "TOKEN=first\nTOKEN=second\n";
+
+    const preview = vault.previewEnvImport(project.id, env.id, source);
+    expect(preview.created.map((e) => [e.key, e.value])).toEqual([["TOKEN", "second"]]);
+
+    await vault.applyEnvImport(project.id, env.id, source, [{ key: "TOKEN", action: "create" }]);
+    expect(vault.envItems(project.id, env.id).map((i) => [i.name, i.fields.value])).toEqual([["TOKEN", "second"]]);
+
+    // NEWKEY does not exist yet, so a repeated key used to create two items with the same name.
+    await vault.replaceEnvFromRaw(project.id, env.id, "TOKEN=second\nNEWKEY=third\nNEWKEY=fourth\n");
+    const after = vault.envItems(project.id, env.id);
+    expect(after.map((i) => [i.name, i.fields.value])).toEqual([
+      ["NEWKEY", "fourth"],
+      ["TOKEN", "second"],
+    ]);
+  });
+
   it("gives a duplicated file item its own copy of the file", async () => {
     const { vault } = await ready();
     const original = await vault.createItem({ type: "file", name: "cert", attachmentName: "a.pem" });

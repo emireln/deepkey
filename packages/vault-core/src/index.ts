@@ -606,10 +606,8 @@ export class VaultEngine {
     const created: EnvEntry[] = [];
     const existing: EnvEntry[] = [];
     const changed: { key: string; from: string; to: string }[] = [];
-    const seen = new Set<string>();
-    for (const entry of parsed.entries) {
-      if (seen.has(entry.key)) continue;
-      seen.add(entry.key);
+    // Same rule as applyEnvImport: when a key repeats, the last assignment wins.
+    for (const entry of envEntriesToMap(parsed.entries).values()) {
       const prev = current.get(entry.key);
       if (!prev) created.push(entry);
       else if (prev.value === entry.value) existing.push(entry);
@@ -659,7 +657,8 @@ export class VaultEngine {
     const existing = this.envItems(projectId, environmentId);
     const byKey = new Map(existing.map((i) => [i.name, i]));
     const keep = new Set<string>();
-    for (const entry of parsed.entries) {
+    // One item per key. Without this, a repeated key created a second item with the same name.
+    for (const entry of envEntriesToMap(parsed.entries).values()) {
       keep.add(entry.key);
       const current = byKey.get(entry.key);
       if (!current) {

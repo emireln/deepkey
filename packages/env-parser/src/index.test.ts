@@ -62,4 +62,16 @@ describe("env parser", () => {
     expect(kube).toContain("name: my-app-prod");
     expect(kube).toContain("FOO: \"bar\"");
   });
+
+  it("keeps a comment on one line even when its text contains a newline", () => {
+    const entries = [{ key: "A", value: "1", comment: "note\nB=2", enabled: true, line: 1 }];
+    const out = serializeEnv(entries);
+    expect(out).toBe("A=1 # note B=2\n");
+    expect(parseEnv(out).entries.map((e) => e.key)).toEqual(["A"]);
+  });
+
+  it("escapes dollar signs so compose does not interpolate them", () => {
+    const entries = [{ key: "PASSWORD", value: "pa$$word$HOME", comment: null, enabled: true, line: 1 }];
+    expect(serializeCompose(entries)).toContain('PASSWORD: "pa$$$$word$$HOME"');
+  });
 });
