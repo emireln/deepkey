@@ -66,6 +66,20 @@ const COMMANDS: { id: CommandId; title: string; keywords: string }[] = [
   { id: "settings", title: "Settings", keywords: "preferences" },
 ];
 
+/** Fields kept in an item's history. restoreRevision puts back only these. */
+const HISTORY_FIELDS = [
+  "name",
+  "type",
+  "fields",
+  "notes",
+  "description",
+  "tags",
+  "projectId",
+  "environmentId",
+  "expiresAt",
+  "customFields",
+] as const;
+
 export class VaultEngine {
   private dek: Uint8Array | null = null;
   private header: VaultHeader | null = null;
@@ -304,15 +318,9 @@ export class VaultEngine {
       envMap.set(env.id, created.id);
     }
     for (const item of this.items().filter((i) => i.projectId === id)) {
-      await this.createItem({
-        ...item,
-        id: newId(),
-        name: item.name,
+      await this.cloneItem(item, {
         projectId: copy.id,
         environmentId: item.environmentId ? envMap.get(item.environmentId) ?? null : null,
-        createdAt: now(),
-        updatedAt: now(),
-        lastAccessedAt: null,
       });
     }
     return copy;
@@ -381,18 +389,7 @@ export class VaultEngine {
       updatedAt: now(),
     };
     if (recordHistory) {
-      const fields = changedFields(current as unknown as Record<string, unknown>, next as unknown as Record<string, unknown>, [
-        "name",
-        "type",
-        "fields",
-        "notes",
-        "description",
-        "tags",
-        "projectId",
-        "environmentId",
-        "expiresAt",
-        "customFields",
-      ]);
+      const fields = changedFields(current as unknown as Record<string, unknown>, next as unknown as Record<string, unknown>, [...HISTORY_FIELDS]);
       if (fields.length) {
         await this.addRevision(current, fields);
       }
@@ -431,12 +428,29 @@ export class VaultEngine {
   async duplicateItem(id: string): Promise<VaultItem> {
     const item = this.getItem(id);
     if (!item) throw new Error("Item not found.");
-    return this.createItem({
+    return this.cloneItem(item, { name: `${item.name} copy` });
+  }
+
+  /**
+   * A copy gets its own file. Two items sharing one attachment would lose it as soon as either one
+   * replaces or deletes its file.
+   */
+  private async cloneItem(item: VaultItem, overrides: Partial<VaultItem>): Promise<VaultItem> {
+    const t = now();
+    const copy = await this.createItem({
       ...item,
+      ...overrides,
       id: newId(),
-      name: `${item.name} copy`,
+      createdAt: t,
+      updatedAt: t,
       lastAccessedAt: null,
+      attachmentId: null,
+      attachmentName: null,
+      attachmentMime: null,
     });
+    if (!item.attachmentId) return copy;
+    const file = await this.readFile(item.id);
+    return this.putFile(copy.id, file.name, file.mime, file.bytes);
   }
 
   async trashItem(id: string): Promise<void> {
@@ -490,7 +504,10 @@ export class VaultEngine {
     if (!revision || revision.kind !== "revision" || revision.itemId !== itemId) {
       throw new Error("Revision not found.");
     }
-    return this.updateItem(itemId, revision.snapshot);
+    // The file, favorite flag, and last-used time stay as they are now. The snapshot may point at an
+    // attachment that has been replaced or purged since it was taken.
+    const patch = Object.fromEntries(HISTORY_FIELDS.map((key) => [key, revision.snapshot[key]])) as Partial<VaultItem>;
+    return this.updateItem(itemId, patch);
   }
 
   async putFile(itemId: string, filename: string, mime: string, bytes: Uint8Array): Promise<VaultItem> {

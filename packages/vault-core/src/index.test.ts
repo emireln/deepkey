@@ -149,4 +149,46 @@ describe("vault-core", () => {
     expect(await store.listRecords()).toHaveLength(0);
     expect(vault.unlocked).toBe(false);
   });
+
+  it("gives a duplicated file item its own copy of the file", async () => {
+    const { vault } = await ready();
+    const original = await vault.createItem({ type: "file", name: "cert", attachmentName: "a.pem" });
+    await vault.putFile(original.id, "a.pem", "text/plain", new TextEncoder().encode("first"));
+    const copy = await vault.duplicateItem(original.id);
+    expect(copy.attachmentId).not.toBe(original.attachmentId);
+
+    await vault.putFile(original.id, "a.pem", "text/plain", new TextEncoder().encode("second"));
+    await vault.deletePermanent(original.id);
+
+    const file = await vault.readFile(copy.id);
+    expect(new TextDecoder().decode(file.bytes)).toBe("first");
+  });
+
+  it("copies files when a project is duplicated", async () => {
+    const { vault } = await ready();
+    const project = await vault.createProject("App");
+    const env = await vault.createEnvironment(project.id, "Development");
+    const item = await vault.createItem({ type: "file", name: "key", projectId: project.id, environmentId: env.id });
+    await vault.putFile(item.id, "key.txt", "text/plain", new TextEncoder().encode("secret-bytes"));
+
+    const copy = await vault.duplicateProject(project.id);
+    const copied = vault.items().find((i) => i.projectId === copy.id);
+    expect(copied?.attachmentId).toBeTruthy();
+    expect(copied?.attachmentId).not.toBe(item.attachmentId);
+    expect(new TextDecoder().decode((await vault.readFile(copied!.id)).bytes)).toBe("secret-bytes");
+  });
+
+  it("restoring a revision keeps the file the item has now", async () => {
+    const { vault } = await ready();
+    const item = await vault.createItem({ type: "file", name: "doc" });
+    await vault.putFile(item.id, "a.txt", "text/plain", new TextEncoder().encode("old"));
+    await vault.updateItem(item.id, { name: "doc renamed" });
+    const revisionId = vault.revisions(item.id)[0]!.id;
+    await vault.putFile(item.id, "b.txt", "text/plain", new TextEncoder().encode("new"));
+
+    await vault.restoreRevision(item.id, revisionId);
+
+    expect(vault.getItem(item.id)?.name).toBe("doc");
+    expect(new TextDecoder().decode((await vault.readFile(item.id)).bytes)).toBe("new");
+  });
 });
