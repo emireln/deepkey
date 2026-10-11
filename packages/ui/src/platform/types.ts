@@ -60,6 +60,7 @@ export interface PlatformAdapter {
     onLock(cb: () => void): () => void;
     onResume(cb: () => void): () => void;
     onPalette?(cb: () => void): () => void;
+    onTrayLock?(cb: () => void): () => void;
   };
   osUnlock?: {
     available(): Promise<boolean>;

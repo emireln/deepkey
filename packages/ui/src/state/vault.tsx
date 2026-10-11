@@ -232,6 +232,9 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     return () => unsubs.forEach((u) => u());
   }, [lock, platform, settings, unlocked]);
 
+  // The tray's "Lock Vault" always locks, whatever the other lock settings say.
+  useEffect(() => platform.window?.onTrayLock?.(() => lock()), [lock, platform]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const meta = e.metaKey || e.ctrlKey;

@@ -62,6 +62,7 @@ function createDesktopPlatform(): PlatformAdapter {
       onLock: (cb) => window.deepkey.on("system:lock", cb),
       onResume: (cb) => window.deepkey.on("system:resume", cb),
       onPalette: (cb) => window.deepkey.on("palette", cb),
+      onTrayLock: (cb) => window.deepkey.on("lock", cb),
     },
     osUnlock: {
       available: () => invoke("osUnlock:available") as Promise<boolean>,
@@ -99,9 +100,6 @@ function createDesktopPlatform(): PlatformAdapter {
 }
 
 const platform = createDesktopPlatform();
-window.deepkey.on("lock", () => {
-  window.dispatchEvent(new KeyboardEvent("keydown", { key: "l", ctrlKey: true }));
-});
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
