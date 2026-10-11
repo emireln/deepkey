@@ -682,7 +682,7 @@ export function SecurityScreen() {
         <div className="card">
           <div className="card-label">{t("privacyMode")}</div>
           <div className="card-value" style={{ fontSize: 22 }}>
-            {settings.security.privacyMode ? "On" : "Off"}
+            {settings.security.privacyMode ? t("on") : t("off")}
           </div>
         </div>
         <div className="card">

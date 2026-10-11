@@ -51,7 +51,7 @@ export function DesktopOnboarding() {
               <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
             </Field>
             <RecoveryAck checked={ack} onChange={setAck} />
-            {mismatch ? <p className="error-text">Passwords do not match.</p> : null}
+            {mismatch ? <p className="error-text">{t("passwordsDoNotMatch")}</p> : null}
             <div className="split" style={{ marginTop: 20, justifyContent: "flex-end" }}>
               <Button
                 variant="primary"

@@ -6,6 +6,7 @@ import { ITEM_TYPES } from "@deepkey/config";
 import { Button, EmptyState, Field, Input, SecretField, Select, Textarea } from "../components/controls.js";
 import { Dialog } from "../components/feedback.js";
 import { t } from "../i18n/index.js";
+import type { MessageKey } from "../i18n/en.js";
 import { expiresLabel, formatDate, typeLabel } from "../lib/format.js";
 import { DEFAULT_GENERATOR, generateSecret, itemSecret, newId } from "@deepkey/vault-core";
 import { usePlatform } from "../platform/context.js";
@@ -456,7 +457,7 @@ export function ItemDetailScreen() {
             {history.map((rev) => (
               <div key={rev.id} className="split" style={{ justifyContent: "space-between", padding: "8px 0" }}>
                 <span>
-                  {formatDate(rev.createdAt)} · {rev.changedFields.join(", ")}
+                  {formatDate(rev.createdAt)} · {rev.changedFields.map(historyFieldLabel).join(", ")}
                 </span>
                 <Button
                   onClick={async () => {
@@ -489,17 +490,36 @@ export function ItemDetailScreen() {
   );
 }
 
-const TEMPLATES: { id: string; type: ItemType; title: string; sub: string }[] = [
-  { id: "api_key", type: "api_key", title: "API Key", sub: "Name and secret value" },
-  { id: "token", type: "token", title: "Access Token", sub: "Bearer or API token" },
-  { id: "credential", type: "credential", title: "Username + Password", sub: "Login pair" },
-  { id: "database", type: "database", title: "Database Credential", sub: "Connection details" },
-  { id: "connection_string", type: "database", title: "Connection String", sub: "Single URI" },
-  { id: "webhook", type: "webhook", title: "Webhook Secret", sub: "Endpoint signing secret" },
-  { id: "ssh_key", type: "ssh_key", title: "SSH Private Key", sub: "PEM or OpenSSH" },
-  { id: "certificate", type: "certificate", title: "Certificate", sub: "PEM certificate" },
-  { id: "custom", type: "custom", title: "Custom Secret", sub: "Your own fields" },
+const TEMPLATES: { id: string; type: ItemType; title: MessageKey; sub: MessageKey }[] = [
+  { id: "api_key", type: "api_key", title: "tplApiKey", sub: "tplApiKeySub" },
+  { id: "token", type: "token", title: "tplToken", sub: "tplTokenSub" },
+  { id: "credential", type: "credential", title: "tplCredential", sub: "tplCredentialSub" },
+  { id: "database", type: "database", title: "tplDatabase", sub: "tplDatabaseSub" },
+  { id: "connection_string", type: "database", title: "tplConnection", sub: "tplConnectionSub" },
+  { id: "webhook", type: "webhook", title: "tplWebhook", sub: "tplWebhookSub" },
+  { id: "ssh_key", type: "ssh_key", title: "tplSshKey", sub: "tplSshKeySub" },
+  { id: "certificate", type: "certificate", title: "tplCertificate", sub: "tplCertificateSub" },
+  { id: "custom", type: "custom", title: "tplCustom", sub: "tplCustomSub" },
 ];
+
+const HISTORY_LABELS: Record<string, MessageKey> = {
+  name: "name",
+  type: "type",
+  fields: "fieldsLabel",
+  notes: "notesLabel",
+  description: "description",
+  tags: "tags",
+  projectId: "project",
+  environmentId: "environment",
+  expiresAt: "expiration",
+  customFields: "customFieldsLabel",
+};
+
+/** History stores field names. Show them the way the form labels them. */
+function historyFieldLabel(field: string): string {
+  const key = HISTORY_LABELS[field];
+  return key ? t(key) : field;
+}
 
 /** A connection string is saved as a database item that has a value field. Reopen it with its own template. */
 function templateOf(item: VaultItem): string {
@@ -587,8 +607,8 @@ export function NewSecretScreen({ editId }: { editId?: string }) {
           <div className="templates">
             {TEMPLATES.map((tpl) => (
               <button key={tpl.id} type="button" className="template" onClick={() => setTemplate(tpl.id)}>
-                <b>{tpl.title}</b>
-                <span>{tpl.sub}</span>
+                <b>{t(tpl.title)}</b>
+                <span>{t(tpl.sub)}</span>
               </button>
             ))}
           </div>
@@ -651,7 +671,7 @@ export function NewSecretScreen({ editId }: { editId?: string }) {
           ) : null}
           {type === "custom" ? (
             <div className="grid-2">
-              <Field label="Field">
+              <Field label={t("customField")}>
                 <Input value={customLabel} onChange={(e) => setCustomLabel(e.target.value)} />
               </Field>
               <Field label={t("value")}>

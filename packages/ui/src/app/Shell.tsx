@@ -55,7 +55,7 @@ export function AppShell() {
     <div className={`shell${settings.security.privacyMode ? " is-private" : ""}${blurSensitive ? " is-blurred" : ""}`}>
       <Titlebar />
       <div className="mobile-bar">
-        <button type="button" className="btn icon" aria-label="Menu" onClick={() => setDrawer(true)}>
+        <button type="button" className="btn icon" aria-label={t("menu")} onClick={() => setDrawer(true)}>
           <List size={20} />
         </button>
         <strong className="brand-word">{t("app")}</strong>

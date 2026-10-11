@@ -50,7 +50,7 @@ export function GeneratorScreen() {
       <div className="page-head">
         <div>
           <h1 className="page-title">{t("generator")}</h1>
-          <p className="page-sub">Generate cryptographically secure passwords, passphrases, and tokens.</p>
+          <p className="page-sub">{t("generatorSub")}</p>
         </div>
       </div>
       <div className="grid-2" style={{ marginTop: 24, gap: 24, alignItems: "stretch" }}>
@@ -66,12 +66,12 @@ export function GeneratorScreen() {
                 });
               }}
             >
-              <option value="password">Password</option>
+              <option value="password">{t("optPassword")}</option>
               <option value="passphrase">{t("passphrase")}</option>
-              <option value="token">API Token</option>
-              <option value="hex">Hex</option>
-              <option value="base64">Base64</option>
-              <option value="uuid">UUID</option>
+              <option value="token">{t("optApiToken")}</option>
+              <option value="hex">{t("optHex")}</option>
+              <option value="base64">{t("optBase64")}</option>
+              <option value="uuid">{t("optUuid")}</option>
             </Select>
           </Field>
 
@@ -101,7 +101,7 @@ export function GeneratorScreen() {
 
           {opts.kind === "password" ? (
             <div>
-              <span className="field-label" style={{ display: "block", marginBottom: 10 }}>Options</span>
+              <span className="field-label" style={{ display: "block", marginBottom: 10 }}>{t("optionsLabel")}</span>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 16px" }}>
                 <Checkbox checked={opts.uppercase} onChange={(v) => updateOpts({ uppercase: v })} label={t("uppercase")} />
                 <Checkbox checked={opts.lowercase} onChange={(v) => updateOpts({ lowercase: v })} label={t("lowercase")} />
@@ -119,7 +119,7 @@ export function GeneratorScreen() {
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
               <span className="field-label">{t("value")}</span>
-              <span className="cell-muted" style={{ fontSize: 13 }}>{value.length} chars</span>
+              <span className="cell-muted">{t("charsCount").replace("{n}", String(value.length))}</span>
             </div>
             <Textarea
               mono
@@ -143,8 +143,8 @@ export function GeneratorScreen() {
                 <div className={`strength s${score.score}`}>
                   <span />
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 13, color: "var(--text-secondary)" }}>
-                  <span>Strength</span>
+                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 14, color: "var(--text-secondary)" }}>
+                  <span>{t("strengthLabel")}</span>
                   <span style={{ fontWeight: 700, color: score.score >= 3 ? "var(--success)" : score.score === 2 ? "var(--warning)" : "var(--danger)" }}>
                     {score.label}
                   </span>
@@ -166,7 +166,12 @@ export function GeneratorScreen() {
               onClick={async () => {
                 const item = await engine.createItem({
                   type: opts.kind === "password" || opts.kind === "passphrase" ? "credential" : "token",
-                  name: opts.kind === "passphrase" ? "Generated passphrase" : opts.kind === "password" ? "Generated password" : "Generated token",
+                  name:
+                    opts.kind === "passphrase"
+                      ? t("generatedPassphrase")
+                      : opts.kind === "password"
+                        ? t("generatedPassword")
+                        : t("generatedToken"),
                   fields: opts.kind === "password" || opts.kind === "passphrase" ? { password: value } : { value },
                 });
                 refresh();

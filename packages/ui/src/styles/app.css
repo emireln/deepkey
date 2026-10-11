@@ -841,7 +841,7 @@ a:focus {
 .card-meta {
   margin-top: 8px;
   color: var(--text-tertiary);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .section {
@@ -1063,7 +1063,7 @@ a:focus {
 }
 .secret-value {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .secret-line {
@@ -1170,7 +1170,7 @@ a:focus {
 
 .hint {
   color: var(--text-tertiary);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   margin: 0;
 }
@@ -1188,7 +1188,7 @@ a:focus {
 
 .recovery-ack .hint {
   color: #f0c040;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   line-height: 1.45;
   margin: 0;
@@ -1196,7 +1196,7 @@ a:focus {
 
 .recovery-ack .checkline {
   margin: 0;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   line-height: 1.4;
   color: var(--text-primary);
@@ -1470,7 +1470,7 @@ a:focus {
 
 .template span {
   color: var(--text-tertiary);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .settings-layout {
@@ -1536,7 +1536,7 @@ a:focus {
 
 .badge-warn {
   color: var(--warning);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .banner {
@@ -1714,7 +1714,7 @@ a:focus {
 
 .error-text {
   color: var(--danger);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   margin: 8px 0;
   padding: 8px 12px;

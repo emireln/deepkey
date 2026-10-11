@@ -841,7 +841,7 @@ export class VaultEngine {
           id: item.id,
           kind: "item",
           title: item.name,
-          subtitle: [item.type.replace("_", " "), project?.name, env?.name].filter(Boolean).join(" · "),
+          subtitle: [project?.name, env?.name].filter(Boolean).join(" · "),
           type: item.type,
         });
       }

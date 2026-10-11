@@ -516,7 +516,7 @@ export function EnvFilesScreen() {
               </Select>
             </Field>
             {exportFormat === "dotenv" ? (
-              <Field label="Filename">
+              <Field label={t("filename")}>
                 <Select value={filename} onChange={(e) => setFilename(e.target.value)}>
                   <option>.env</option>
                   <option>.env.local</option>
