@@ -98,8 +98,8 @@ export async function readKey(): Promise<Key> {
       const idleFor = Date.now() - lastActivity;
       lastActivity = Date.now();
       cleanup();
-      if (idleLimitMs >= 0) {
-        const limit = idleLimitMs === 0 ? 250 : idleLimitMs;
+      if (idleLimitMs > 0) {
+        const limit = idleLimitMs;
         if (idleFor >= limit) {
           reject(new IdleLock());
           return;
@@ -152,8 +152,8 @@ export async function promptLine(label: string, hidden = false): Promise<string>
         }
         const idleFor = Date.now() - lastActivity;
         lastActivity = Date.now();
-        if (idleLimitMs >= 0) {
-          const limit = idleLimitMs === 0 ? 250 : idleLimitMs;
+        if (idleLimitMs > 0) {
+          const limit = idleLimitMs;
           if (idleFor >= limit) {
             reject(new IdleLock());
             return;
@@ -180,8 +180,8 @@ export async function promptLine(label: string, hidden = false): Promise<string>
         write("\n");
         const idleFor = Date.now() - lastActivity;
         lastActivity = Date.now();
-        if (idleLimitMs >= 0) {
-          const limit = idleLimitMs === 0 ? 250 : idleLimitMs;
+        if (idleLimitMs > 0) {
+          const limit = idleLimitMs;
           if (idleFor >= limit && !value) {
             reject(new IdleLock());
             return;

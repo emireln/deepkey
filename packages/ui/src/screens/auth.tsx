@@ -77,7 +77,7 @@ export function DesktopOnboarding() {
               >
                 {AUTO_LOCK_OPTIONS.map((o) => (
                   <option key={o.id} value={o.ms}>
-                    {o.id === "never" ? t("never") : o.id === "immediate" ? t("immediately") : o.id}
+                    {o.id === "never" ? t("never") : o.id}
                   </option>
                 ))}
               </Select>

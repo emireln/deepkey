@@ -84,7 +84,6 @@ export const CLIPBOARD_TIMEOUTS = [
 ] as const;
 
 export const AUTO_LOCK_OPTIONS = [
-  { id: "immediate", ms: 0 },
   { id: "1m", ms: 60_000 },
   { id: "5m", ms: 5 * 60_000 },
   { id: "15m", ms: 15 * 60_000 },

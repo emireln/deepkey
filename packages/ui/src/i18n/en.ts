@@ -139,7 +139,6 @@ export const en = {
   source: "Source code",
   shortcuts: "Shortcuts",
   never: "Never",
-  immediately: "Immediately",
   requirePassword: "Require master password for sensitive actions",
   contentProtection: "Reduce screen capture (best-effort)",
   lockOnBackground: "Lock when DeepKey stays in the background",

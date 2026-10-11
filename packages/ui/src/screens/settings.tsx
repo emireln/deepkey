@@ -163,7 +163,7 @@ export function SettingsScreen({ initial = "general" }: { initial?: Category }) 
                 >
                   {AUTO_LOCK_OPTIONS.map((o) => (
                     <option key={o.id} value={o.ms}>
-                      {o.id === "never" ? t("never") : o.id === "immediate" ? t("immediately") : o.id}
+                      {o.id === "never" ? t("never") : o.id}
                     </option>
                   ))}
                 </Select>
@@ -683,7 +683,7 @@ export function SecurityScreen() {
         <div className="card">
           <div className="card-label">{t("autoLock")}</div>
           <div className="card-value" style={{ fontSize: 22 }}>
-            {settings.security.autoLockMs < 0 ? t("never") : settings.security.autoLockMs === 0 ? t("immediately") : `${settings.security.autoLockMs / 60000}m`}
+            {settings.security.autoLockMs < 0 ? t("never") : `${settings.security.autoLockMs / 60000}m`}
           </div>
         </div>
         <div className="card">

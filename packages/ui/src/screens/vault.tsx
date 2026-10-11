@@ -35,8 +35,7 @@ export function OverviewScreen() {
   const backupDue =
     settings.backup.autoBackup &&
     (!settings.backup.lastBackupAt || Date.now() - settings.backup.lastBackupAt >= settings.backup.autoBackupHours * 60 * 60 * 1000);
-  const lockLabel =
-    settings.security.autoLockMs < 0 ? t("never") : settings.security.autoLockMs === 0 ? t("immediately") : t("lockedAutomatically");
+  const lockLabel = settings.security.autoLockMs < 0 ? t("never") : t("lockedAutomatically");
   return (
     <div>
       <PageHeader title={t("overview")} sub={t("overviewSub")} />

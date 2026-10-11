@@ -197,8 +197,8 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     const resetIdle = () => {
       if (!unlocked) return;
       if (idleTimer.current) window.clearTimeout(idleTimer.current);
-      if (settings.security.autoLockMs < 0) return;
-      idleTimer.current = window.setTimeout(lock, settings.security.autoLockMs === 0 ? 250 : settings.security.autoLockMs);
+      if (settings.security.autoLockMs <= 0) return;
+      idleTimer.current = window.setTimeout(lock, settings.security.autoLockMs);
     };
     resetIdle();
     const events = ["pointerdown", "keydown"];

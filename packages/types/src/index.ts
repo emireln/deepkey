@@ -285,9 +285,13 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
 
 export function mergeAppSettings(raw: unknown): AppSettings {
   const parsed = raw && typeof raw === "object" ? (raw as Partial<AppSettings>) : {};
+  const security = { ...DEFAULT_APP_SETTINGS.security, ...(parsed.security ?? {}) };
+  // "Immediately" used to be 0, which meant a 250 ms idle timer and a lock after any pause.
+  // Settings saved that way now get the closest sensible value.
+  if (security.autoLockMs === 0) security.autoLockMs = 60_000;
   return {
     ui: { ...DEFAULT_APP_SETTINGS.ui, ...(parsed.ui ?? {}) },
-    security: { ...DEFAULT_APP_SETTINGS.security, ...(parsed.security ?? {}) },
+    security,
     backup: { ...DEFAULT_APP_SETTINGS.backup, ...(parsed.backup ?? {}) },
   };
 }

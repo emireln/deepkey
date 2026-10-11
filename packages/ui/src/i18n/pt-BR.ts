@@ -141,7 +141,6 @@ export const ptBR: Messages = {
   source: "Código-fonte",
   shortcuts: "Atalhos",
   never: "Nunca",
-  immediately: "Imediatamente",
   requirePassword: "Exigir senha mestra para ações sensíveis",
   contentProtection: "Reduzir captura de tela (melhor esforço)",
   lockOnBackground: "Bloquear quando o DeepKey ficar em segundo plano",

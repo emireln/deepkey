@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { KDF_MIN } from "@deepkey/config";
+import { mergeAppSettings } from "@deepkey/types";
 import { inspectBackup, MemoryVaultStore, VaultEngine, generateSecret, randomUuid } from "./index.js";
 
 const PASS = "test-master-password-ok";
@@ -148,6 +149,11 @@ describe("vault-core", () => {
     expect(await store.getHeader()).toBeNull();
     expect(await store.listRecords()).toHaveLength(0);
     expect(vault.unlocked).toBe(false);
+  });
+
+  it("moves the old 'immediately' auto-lock value to one minute", () => {
+    expect(mergeAppSettings({ security: { autoLockMs: 0 } }).security.autoLockMs).toBe(60_000);
+    expect(mergeAppSettings({ security: { autoLockMs: -1 } }).security.autoLockMs).toBe(-1);
   });
 
   it("makes RFC 4122 v4 ids without relying on crypto.randomUUID", () => {
