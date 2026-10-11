@@ -1,4 +1,5 @@
 import type { GeneratorOptions } from "@deepkey/types";
+import { randomUuid } from "./util.js";
 
 const UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const LOWER = "abcdefghijklmnopqrstuvwxyz";
@@ -167,7 +168,7 @@ function filterAmbiguous(chars: string, avoid: boolean): string {
 
 export function generateSecret(options: GeneratorOptions): string {
   if (options.kind === "uuid") {
-    return crypto.randomUUID();
+    return randomUuid();
   }
   if (options.kind === "passphrase") {
     const count = Math.min(12, Math.max(3, options.length || 6));

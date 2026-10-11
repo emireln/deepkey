@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { KDF_MIN } from "@deepkey/config";
-import { inspectBackup, MemoryVaultStore, VaultEngine, generateSecret } from "./index.js";
+import { inspectBackup, MemoryVaultStore, VaultEngine, generateSecret, randomUuid } from "./index.js";
 
 const PASS = "test-master-password-ok";
 const kdf = { ...KDF_MIN, version: 0x13 };
@@ -148,6 +148,14 @@ describe("vault-core", () => {
     expect(await store.getHeader()).toBeNull();
     expect(await store.listRecords()).toHaveLength(0);
     expect(vault.unlocked).toBe(false);
+  });
+
+  it("makes RFC 4122 v4 ids without relying on crypto.randomUUID", () => {
+    const ids = Array.from({ length: 50 }, () => randomUuid());
+    for (const id of ids) {
+      expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    }
+    expect(new Set(ids).size).toBe(ids.length);
   });
 
   it("restores a deleted project with the environments and items deleted along with it", async () => {

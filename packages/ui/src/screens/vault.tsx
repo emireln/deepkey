@@ -7,7 +7,7 @@ import { Button, EmptyState, Field, Input, SecretField, Select, Textarea } from 
 import { Dialog } from "../components/feedback.js";
 import { t } from "../i18n/index.js";
 import { expiresLabel, formatDate, typeLabel } from "../lib/format.js";
-import { DEFAULT_GENERATOR, generateSecret, itemSecret } from "@deepkey/vault-core";
+import { DEFAULT_GENERATOR, generateSecret, itemSecret, newId } from "@deepkey/vault-core";
 import { usePlatform } from "../platform/context.js";
 import { useVault } from "../state/vault.js";
 
@@ -502,11 +502,17 @@ const TEMPLATES: { id: string; type: ItemType; title: string; sub: string }[] = 
   { id: "custom", type: "custom", title: "Custom Secret", sub: "Your own fields" },
 ];
 
+/** A connection string is saved as a database item that has a value field. Reopen it with its own template. */
+function templateOf(item: VaultItem): string {
+  if (item.type === "database" && item.fields.value !== undefined) return "connection_string";
+  return item.type;
+}
+
 export function NewSecretScreen({ editId }: { editId?: string }) {
   const { engine, refresh } = useVault();
   const navigate = useNavigate();
   const existing = editId ? engine.getItem(editId) : null;
-  const [template, setTemplate] = useState(existing?.type ?? "");
+  const [template, setTemplate] = useState(existing ? templateOf(existing) : "");
   const [name, setName] = useState(existing?.name ?? "");
   const [value, setValue] = useState(existing?.fields.value ?? "");
   const [username, setUsername] = useState(existing?.fields.username ?? "");
@@ -544,7 +550,9 @@ export function NewSecretScreen({ editId }: { editId?: string }) {
     }
     if (type === "ssh_key") fields.privateKey = privateKey;
     if (type === "certificate") fields.certificate = certificate;
-    const customFields = customLabel ? [{ id: crypto.randomUUID(), label: customLabel, value: customValue, secret: true }] : existing?.customFields ?? [];
+    // A new field is added to the fields the item already has, never in place of them.
+    const kept = existing?.customFields ?? [];
+    const customFields = customLabel ? [...kept, { id: newId(), label: customLabel, value: customValue, secret: true }] : kept;
     const payload = {
       type,
       name: name.trim(),
@@ -654,7 +662,14 @@ export function NewSecretScreen({ editId }: { editId?: string }) {
           ) : null}
           <div className="grid-2">
             <Field label={t("project")}>
-              <Select value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+              <Select
+                value={projectId}
+                onChange={(e) => {
+                  // An environment belongs to one project, so drop the old choice when the project changes.
+                  setProjectId(e.target.value);
+                  setEnvironmentId("");
+                }}
+              >
                 <option value="">{t("none")}</option>
                 {engine.projects().map((p) => (
                   <option key={p.id} value={p.id}>

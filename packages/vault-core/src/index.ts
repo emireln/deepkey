@@ -916,4 +916,4 @@ export function verifyBackupPassword(payload: unknown, password: string): boolea
 export { MemoryVaultStore } from "./store.js";
 export type { VaultStore } from "./store.js";
 export { generateSecret, DEFAULT_GENERATOR } from "./generator.js";
-export { itemSecret, newId } from "./util.js";
+export { itemSecret, newId, randomUuid } from "./util.js";
