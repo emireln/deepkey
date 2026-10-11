@@ -27,7 +27,7 @@ OS application data, not next to the `.exe`:
 - macOS: `~/Library/Application Support/DeepKey`
 - Linux: `~/.config/DeepKey`
 
-SQLite lives under that folder (`vault/deepkey.sqlite` unless you pointed it somewhere else).
+SQLite lives at `vault/deepkey.sqlite` inside that folder.
 
 ## Window
 

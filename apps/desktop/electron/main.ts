@@ -3,7 +3,23 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { sqliteVaultStore } from "@deepkey/database";
-import { parseOpaqueId, PREF_VALUE_MAX, storedAttachmentSchema, storedRecordSchema, vaultHeaderSchema } from "@deepkey/validation";
+import {
+  ipcBytesSchema,
+  ipcDirectorySchema,
+  ipcFileNameSchema,
+  ipcFiltersSchema,
+  ipcFlagSchema,
+  ipcHttpsUrlSchema,
+  ipcNotificationBodySchema,
+  ipcNotificationTitleSchema,
+  ipcShortTextSchema,
+  ipcTextSchema,
+  parseOpaqueId,
+  PREF_VALUE_MAX,
+  storedAttachmentSchema,
+  storedRecordSchema,
+  vaultHeaderSchema,
+} from "@deepkey/validation";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isDev = Boolean(process.env.VITE_DEV_SERVER_URL);
@@ -138,10 +154,13 @@ function backupsDir(preferred?: string | null): string {
   return userData("backups");
 }
 
+// Only the files this app writes on its timer. Exports the user saved by hand can share the folder.
+const AUTO_BACKUP_NAME = /^deepkey-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.deepkeyvault$/;
+
 function pruneBackups(dir: string): void {
   const files = fs
     .readdirSync(dir)
-    .filter((name) => name.endsWith(".deepkeyvault"))
+    .filter((name) => AUTO_BACKUP_NAME.test(name))
     .map((name) => ({ name, mtime: fs.statSync(path.join(dir, name)).mtimeMs }))
     .sort((a, b) => b.mtime - a.mtime);
   for (const extra of files.slice(14)) {
@@ -164,9 +183,13 @@ function userData(...parts: string[]): string {
 }
 
 function dbFile(): string {
-  const custom = store?.getKv("vaultPath");
-  if (custom && path.isAbsolute(custom) && !custom.includes("\0")) return custom;
   return userData("vault", "deepkey.sqlite");
+}
+
+/** The key stored for OS unlock belongs to one vault. Forget it when that vault is wiped or replaced. */
+function removeOsUnlockKey(): void {
+  const file = userData("os-unlock.bin");
+  if (fs.existsSync(file)) fs.unlinkSync(file);
 }
 
 function windowStatePath(): string {
@@ -283,17 +306,16 @@ function registerIpc(): void {
   ipcMain.handle("vault:putAttachment", (_e, attachment) => store.putAttachment(storedAttachmentSchema.parse(attachment)));
   ipcMain.handle("vault:getAttachment", (_e, id) => store.getAttachment(assertId(id)));
   ipcMain.handle("vault:deleteAttachment", (_e, id) => store.deleteAttachment(assertId(id)));
-  ipcMain.handle("vault:replaceAll", (_e, payload) =>
-    store.replaceAll(
-      vaultHeaderSchema.parse(payload.header),
-      storedRecordSchema.array().parse(payload.records),
-      storedAttachmentSchema.array().parse(payload.attachments),
-    ),
-  );
+  ipcMain.handle("vault:replaceAll", async (_e, payload) => {
+    const header = vaultHeaderSchema.parse(payload.header);
+    const records = storedRecordSchema.array().parse(payload.records);
+    const attachments = storedAttachmentSchema.array().parse(payload.attachments);
+    await store.replaceAll(header, records, attachments);
+    removeOsUnlockKey();
+  });
   ipcMain.handle("vault:wipe", async () => {
     await store.wipe();
-    const file = userData("os-unlock.bin");
-    if (fs.existsSync(file)) fs.unlinkSync(file);
+    removeOsUnlockKey();
   });
   ipcMain.handle("vault:dbPath", () => dbFile());
   ipcMain.handle("prefs:get", (_e, key) => {
@@ -306,13 +328,11 @@ function registerIpc(): void {
     store.setKv(key, value);
   });
   ipcMain.handle("clipboard:write", (_e, text) => {
-    if (typeof text !== "string") throw new Error("Invalid clipboard payload.");
-    clipboard.writeText(text);
+    clipboard.writeText(ipcTextSchema.parse(text));
   });
   ipcMain.handle("clipboard:read", () => clipboard.readText());
   ipcMain.handle("clipboard:clearIfUnchanged", (_e, expected) => {
-    if (typeof expected !== "string") return false;
-    if (clipboard.readText() === expected) {
+    if (clipboard.readText() === ipcTextSchema.parse(expected)) {
       clipboard.clear();
       return true;
     }
@@ -321,20 +341,18 @@ function registerIpc(): void {
   ipcMain.handle("files:open", async (_e, filters) => {
     const result = await dialog.showOpenDialog(mainWindow!, {
       properties: ["openFile"],
-      filters: Array.isArray(filters) ? filters : undefined,
+      filters: ipcFiltersSchema.parse(filters),
     });
     if (result.canceled || !result.filePaths[0]) return null;
     const filePath = result.filePaths[0];
     const bytes = fs.readFileSync(filePath);
     return { name: path.basename(filePath), mime: mimeFromFile(filePath, bytes), bytes };
   });
-  ipcMain.handle("files:save", async (_e, filename, bytes, _mime) => {
-    if (typeof filename !== "string" || filename.includes("..") || filename.includes("/") || filename.includes("\\")) {
-      throw new Error("Invalid filename.");
-    }
-    const result = await dialog.showSaveDialog(mainWindow!, { defaultPath: filename });
+  ipcMain.handle("files:save", async (_e, filename, bytes) => {
+    const name = ipcFileNameSchema.parse(filename);
+    const data = ipcBytesSchema.parse(bytes);
+    const result = await dialog.showSaveDialog(mainWindow!, { defaultPath: name });
     if (result.canceled || !result.filePath) return false;
-    const data = bytes instanceof Uint8Array ? bytes : Buffer.from(bytes);
     fs.writeFileSync(result.filePath, data);
     return true;
   });
@@ -347,12 +365,11 @@ function registerIpc(): void {
   ipcMain.handle("window:close", () => mainWindow?.close());
   ipcMain.handle("window:isMaximized", () => Boolean(mainWindow?.isMaximized()));
   ipcMain.handle("window:setContentProtection", (_e, enabled) => {
-    mainWindow?.setContentProtection(Boolean(enabled));
+    mainWindow?.setContentProtection(ipcFlagSchema.parse(enabled));
   });
   ipcMain.handle("osUnlock:available", () => safeStorage.isEncryptionAvailable());
   ipcMain.handle("osUnlock:store", (_e, b64) => {
-    if (typeof b64 !== "string" || b64.length > 2048) throw new Error("Invalid payload.");
-    const enc = safeStorage.encryptString(b64);
+    const enc = safeStorage.encryptString(ipcShortTextSchema.parse(b64));
     fs.writeFileSync(userData("os-unlock.bin"), enc);
   });
   ipcMain.handle("osUnlock:load", () => {
@@ -364,18 +381,15 @@ function registerIpc(): void {
       return null;
     }
   });
-  ipcMain.handle("osUnlock:clear", () => {
-    const file = userData("os-unlock.bin");
-    if (fs.existsSync(file)) fs.unlinkSync(file);
-  });
+  ipcMain.handle("osUnlock:clear", () => removeOsUnlockKey());
   ipcMain.handle("desktop:setLaunchAtStartup", (_e, enabled) => {
-    app.setLoginItemSettings({ openAtLogin: Boolean(enabled) });
+    app.setLoginItemSettings({ openAtLogin: ipcFlagSchema.parse(enabled) });
   });
   ipcMain.handle("desktop:setTray", (_e, enabled) => {
-    setTrayEnabled(Boolean(enabled));
+    setTrayEnabled(ipcFlagSchema.parse(enabled));
   });
   ipcMain.handle("desktop:setGlobalShortcut", (_e, enabled) => {
-    return setGlobalShortcutEnabled(Boolean(enabled));
+    return setGlobalShortcutEnabled(ipcFlagSchema.parse(enabled));
   });
   ipcMain.handle("backup:pickDir", async () => {
     const result = await dialog.showOpenDialog(mainWindow!, { properties: ["openDirectory", "createDirectory"] });
@@ -383,23 +397,22 @@ function registerIpc(): void {
     return result.filePaths[0];
   });
   ipcMain.handle("backup:writeAuto", (_e, bytes, dir) => {
-    const folder = backupsDir(typeof dir === "string" ? dir : null);
+    const folder = backupsDir(ipcDirectorySchema.parse(dir));
     fs.mkdirSync(folder, { recursive: true });
     const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
     const file = path.join(folder, `deepkey-${stamp}.deepkeyvault`);
-    const data = bytes instanceof Uint8Array ? bytes : Buffer.from(bytes);
-    fs.writeFileSync(file, data);
+    fs.writeFileSync(file, ipcBytesSchema.parse(bytes));
     pruneBackups(folder);
     return file;
   });
   ipcMain.handle("notifications:show", (_e, title, body) => {
-    if (typeof title !== "string" || typeof body !== "string") return;
-    if (title.length > 120 || body.length > 280) return;
-    new Notification({ title, body, silent: true }).show();
+    const t = ipcNotificationTitleSchema.safeParse(title);
+    const b = ipcNotificationBodySchema.safeParse(body);
+    if (!t.success || !b.success) return;
+    new Notification({ title: t.data, body: b.data, silent: true }).show();
   });
   ipcMain.handle("app:openExternal", (_e, url) => {
-    if (typeof url !== "string" || !url.startsWith("https://")) throw new Error("Blocked URL.");
-    return shell.openExternal(url);
+    return shell.openExternal(ipcHttpsUrlSchema.parse(url));
   });
 }
 
@@ -414,7 +427,7 @@ if (!gotLock) {
     mainWindow?.focus();
   });
   app.whenReady().then(() => {
-    store = sqliteVaultStore(userData("vault", "deepkey.sqlite"));
+    store = sqliteVaultStore(dbFile());
     session.defaultSession.setPermissionRequestHandler((_w, _p, cb) => cb(false));
     registerIpc();
     setTrayEnabled(settingsWantTray());

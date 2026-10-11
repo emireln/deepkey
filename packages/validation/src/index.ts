@@ -209,3 +209,29 @@ export function assertNoPathTraversal(name: string): void {
     throw new Error("Invalid filename.");
   }
 }
+
+// Desktop IPC payloads. The renderer is less trusted than the main process, so each value is parsed
+// before it reaches the filesystem, the clipboard, the shell, or a notification.
+export const ipcFlagSchema = z.boolean();
+export const ipcTextSchema = z.string().max(1_000_000);
+export const ipcShortTextSchema = z.string().max(2048);
+export const ipcBytesSchema = z.instanceof(Uint8Array);
+export const ipcFileNameSchema = z
+  .string()
+  .min(1)
+  .max(255)
+  .refine((name) => !/[\\/\0]/.test(name) && !name.includes(".."), { message: "Invalid filename." });
+export const ipcDirectorySchema = z
+  .string()
+  .max(4096)
+  .refine((dir) => !dir.includes("\0"), { message: "Invalid path." })
+  .nullable();
+export const ipcHttpsUrlSchema = z
+  .string()
+  .max(2048)
+  .refine((url) => url.startsWith("https://"), { message: "Blocked URL." });
+export const ipcFiltersSchema = z
+  .array(z.object({ name: z.string().max(100), extensions: z.array(z.string().max(20)).max(20) }))
+  .optional();
+export const ipcNotificationTitleSchema = z.string().max(120);
+export const ipcNotificationBodySchema = z.string().max(280);
