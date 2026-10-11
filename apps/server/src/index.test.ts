@@ -72,7 +72,7 @@ describe("server security", () => {
       headers: { origin: "http://localhost:3000", host: "localhost:8787" },
     });
     expect(res.status).toBe(403);
-    expect(await res.json()).toMatchObject({ error: "Missing request header." });
+    expect(await res.json()).toMatchObject({ error: "request_header_missing" });
   });
 
   it("caps the size of unauthenticated bodies", async () => {

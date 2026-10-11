@@ -7,6 +7,7 @@ import { Button, EmptyState, Field, Input, SecretField, Select, Textarea } from 
 import { Dialog, PasswordPrompt, useToast } from "../components/feedback.js";
 import { t } from "../i18n/index.js";
 import { bytesFromText } from "../lib/format.js";
+import { envErrorText } from "../lib/env-errors.js";
 import { usePlatform } from "../platform/context.js";
 import { useVault } from "../state/vault.js";
 
@@ -464,7 +465,7 @@ export function EnvFilesScreen() {
               <p>{t("fixLinesFirst")}</p>
               {parsed.errors.map((e) => (
                 <p key={e.line}>
-                  {t("lineNumber")} {e.line}: {e.message}
+                  {t("lineNumber")} {e.line}: {envErrorText(e)}
                 </p>
               ))}
             </div>
@@ -641,7 +642,7 @@ export function EnvImportScreen() {
               <p>{t("linesSkipped")}</p>
               {preview.parsed.errors.map((e) => (
                 <p key={e.line}>
-                  {t("lineNumber")} {e.line}: {e.message}
+                  {t("lineNumber")} {e.line}: {envErrorText(e)}
                 </p>
               ))}
             </div>

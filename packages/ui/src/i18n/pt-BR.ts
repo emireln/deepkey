@@ -374,4 +374,16 @@ export const ptBR: Messages = {
     "Use 20 ou mais caracteres, ou pelo menos três tipos de caractere (maiúsculas, minúsculas, números e símbolos). Evite repetir poucos caracteres.",
   deleteVaultSubDesktop:
     "Isso remove o banco criptografado local e os backups automáticos que o DeepKey gravou para ele. Não há recuperação. Backups que você exportou manualmente não são alterados.",
+  errInvalidCredentials: "Nome de login ou senha incorretos.",
+  errTooManyAttempts: "Muitas tentativas. Aguarde alguns minutos e tente de novo.",
+  errSetupDone: "Esta instância já está configurada. Entre com a sua conta.",
+  errSetupToken: "O token de configuração está errado. Copie-o de novo de setup.token.",
+  errAccountInvalid:
+    "O nome de login precisa de 3 a 80 letras, números ou . _ @ + -. A senha precisa de pelo menos 10 caracteres.",
+  errForbidden: "Essa requisição foi bloqueada. Recarregue a página e tente de novo.",
+  errTooLarge: "Essa requisição é grande demais.",
+  envErrMissing: "Esperado CHAVE=valor.",
+  envErrInvalidKey: 'Nome inválido "{key}". Use letras, números, sublinhados ou pontos.',
+  envErrEscape: "O texto termina no meio de uma sequência de escape.",
+  envErrQuote: "Um valor entre aspas não está fechado.",
 };

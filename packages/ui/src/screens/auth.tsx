@@ -3,6 +3,7 @@ import type { MessageKey } from "../i18n/en.js";
 import { AUTO_LOCK_OPTIONS, CLIPBOARD_TIMEOUTS } from "@deepkey/config";
 import { masterPasswordIssue, scorePassword } from "@deepkey/validation";
 import { strengthHint, strengthLabel } from "../lib/strength.js";
+import { serverErrorText } from "../lib/server-errors.js";
 import { Logo } from "../components/Logo.js";
 import { LoadingScreen } from "../components/LoadingScreen.js";
 import { Button, Checkbox, Field, Input, Select } from "../components/controls.js";
@@ -161,7 +162,7 @@ export function WebAuth() {
       else await platform.auth!.login(username, password);
       window.location.reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("errorGeneric"));
+      setError(serverErrorText(err));
     } finally {
       setBusy(false);
     }

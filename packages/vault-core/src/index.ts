@@ -779,7 +779,8 @@ export class VaultEngine {
   async replaceEnvFromRaw(projectId: string, environmentId: string, source: string): Promise<void> {
     const parsed = parseEnv(source);
     if (parsed.errors.length) {
-      throw new Error(parsed.errors.map((e) => `Line ${e.line}: ${e.message}`).join("\n"));
+      // The editor only saves text without errors. Anything else is a bug in the caller.
+      throw new Error("The .env text has syntax errors.");
     }
     const existing = this.envItems(projectId, environmentId);
     const byKey = new Map(existing.map((i) => [i.name, i]));

@@ -1,4 +1,4 @@
-import type { EnvEntry, EnvParseResult } from "@deepkey/types";
+import type { EnvEntry, EnvErrorCode, EnvParseError, EnvParseResult } from "@deepkey/types";
 
 const KEY_RE = /^[A-Za-z_][A-Za-z0-9_.]*$/;
 
@@ -11,7 +11,7 @@ function unescapeDouble(value: string): string {
     .replace(/\\\\/g, "\\");
 }
 
-function parseQuoted(source: string, quote: "'" | '"', start: number): { value: string; end: number; error?: string } {
+function parseQuoted(source: string, quote: "'" | '"', start: number): { value: string; end: number; error?: EnvErrorCode } {
   let i = start + 1;
   let value = "";
   while (i < source.length) {
@@ -22,7 +22,7 @@ function parseQuoted(source: string, quote: "'" | '"', start: number): { value: 
     if (quote === '"' && ch === "\\") {
       const next = source[i + 1];
       if (next === undefined) {
-        return { value, end: i, error: "Unterminated escape." };
+        return { value, end: i, error: "unterminated-escape" };
       }
       if (next === "n") value += "\n";
       else if (next === "r") value += "\r";
@@ -37,18 +37,18 @@ function parseQuoted(source: string, quote: "'" | '"', start: number): { value: 
       return { value, end: i + 1 };
     }
     if (ch === "\n" && quote === "'") {
-      return { value, end: i, error: "Unterminated single-quoted value." };
+      return { value, end: i, error: "unterminated-quote" };
     }
     value += ch;
     i += 1;
   }
-  return { value, end: i, error: "Unterminated quoted value." };
+  return { value, end: i, error: "unterminated-quote" };
 }
 
 export function parseEnv(source: string): EnvParseResult {
   const entries: EnvEntry[] = [];
   const comments: { line: number; text: string }[] = [];
-  const errors: { line: number; message: string }[] = [];
+  const errors: EnvParseError[] = [];
   const seen = new Map<string, number>();
   const duplicates: string[] = [];
 
@@ -71,14 +71,14 @@ export function parseEnv(source: string): EnvParseResult {
     let body = trimmed.startsWith("export ") ? trimmed.slice(7).trim() : trimmed;
     const eq = body.indexOf("=");
     if (eq <= 0) {
-      errors.push({ line: lineNumber, message: "Missing KEY=value assignment." });
+      errors.push({ line: lineNumber, code: "missing-assignment" });
       i += 1;
       continue;
     }
 
     const key = body.slice(0, eq).trim();
     if (!KEY_RE.test(key)) {
-      errors.push({ line: lineNumber, message: `Invalid key "${key}".` });
+      errors.push({ line: lineNumber, code: "invalid-key", key });
       i += 1;
       continue;
     }
@@ -95,13 +95,13 @@ export function parseEnv(source: string): EnvParseResult {
         let assembled = raw.slice(startInLine);
         let consumed = i;
         let parsed = parseQuoted(assembled, '"', 0);
-        while (parsed.error === "Unterminated quoted value." && consumed + 1 < lines.length) {
+        while (parsed.error === "unterminated-quote" && consumed + 1 < lines.length) {
           consumed += 1;
           assembled += `\n${lines[consumed]}`;
           parsed = parseQuoted(assembled, '"', 0);
         }
         if (parsed.error) {
-          errors.push({ line: lineNumber, message: parsed.error });
+          errors.push({ line: lineNumber, code: parsed.error });
           i += 1;
           continue;
         }
@@ -112,7 +112,7 @@ export function parseEnv(source: string): EnvParseResult {
       } else {
         const parsed = parseQuoted(first, "'", 0);
         if (parsed.error) {
-          errors.push({ line: lineNumber, message: parsed.error });
+          errors.push({ line: lineNumber, code: parsed.error });
           i += 1;
           continue;
         }

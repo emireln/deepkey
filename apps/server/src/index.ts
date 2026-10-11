@@ -118,8 +118,8 @@ const REQUEST_HEADER = "x-deepkey-request";
 
 app.use("*", async (c, next) => {
   if (["POST", "PUT", "PATCH", "DELETE"].includes(c.req.method)) {
-    if (!originAllowed(c)) return c.json({ error: "Invalid origin." }, 403);
-    if (c.req.header(REQUEST_HEADER) !== "1") return c.json({ error: "Missing request header." }, 403);
+    if (!originAllowed(c)) return c.json({ error: "origin_forbidden" }, 403);
+    if (c.req.header(REQUEST_HEADER) !== "1") return c.json({ error: "request_header_missing" }, 403);
   }
   await next();
 });
@@ -130,7 +130,7 @@ app.use("/api/*", async (c, next) => {
   await next();
 });
 
-const tooLarge = (c: Context) => c.json({ error: "Request too large." }, 413);
+const tooLarge = (c: Context) => c.json({ error: "payload_too_large" }, 413);
 // Login and setup are the only unauthenticated bodies, so they get the tightest cap.
 app.use("/api/auth/*", bodyLimit({ maxSize: 16 * 1024, onError: tooLarge }));
 app.use("/api/prefs/*", bodyLimit({ maxSize: 2 * 1024 * 1024, onError: tooLarge }));
@@ -140,11 +140,11 @@ const vaultBodyLimit = bodyLimit({ maxSize: 64 * 1024 * 1024, onError: tooLarge 
 app.use("/api/vault/*", (c, next) => (c.req.path === "/api/vault/replace" ? next() : vaultBodyLimit(c, next)));
 
 app.onError((err, c) => {
-  if (err instanceof SyntaxError) return c.json({ error: "Invalid JSON." }, 400);
+  if (err instanceof SyntaxError) return c.json({ error: "invalid_json" }, 400);
   const name = err instanceof Error ? err.name : "unknown";
-  if (name === "ZodError") return c.json({ error: "Invalid request." }, 400);
+  if (name === "ZodError") return c.json({ error: "invalid_request" }, 400);
   logError(`request failed: ${name}`);
-  return c.json({ error: "Server error." }, 500);
+  return c.json({ error: "server_error" }, 500);
 });
 
 app.get("/health", (c) => c.json({ ok: true, version: APP_VERSION }));
@@ -153,20 +153,20 @@ app.get("/api/auth/setup-needed", (c) => c.json({ needed: userCount() === 0 }));
 
 app.post("/api/auth/setup", async (c) => {
   const ip = clientIp(c);
-  if (rateLimited(ip)) return c.json({ error: "Too many attempts." }, 429);
+  if (rateLimited(ip)) return c.json({ error: "too_many_attempts" }, 429);
   try {
     const body = await c.req.json();
     // Checked after the await: two setups that both read the count before either wrote would
     // otherwise both succeed. Nothing is awaited between this check and createUser().
-    if (userCount() > 0) return c.json({ error: "Already set up." }, 400);
+    if (userCount() > 0) return c.json({ error: "setup_done" }, 400);
     if (!setupTokenMatches(body.setupToken)) {
       recordAttempt(ip, false);
-      return c.json({ error: "Setup token is wrong." }, 403);
+      return c.json({ error: "setup_token_invalid" }, 403);
     }
     createUser(String(body.username ?? ""), String(body.password ?? ""));
     removeSetupToken();
     const user = verifyUser(String(body.username), String(body.password));
-    if (!user) return c.json({ error: "Could not create account." }, 400);
+    if (!user) return c.json({ error: "account_invalid" }, 400);
     const session = createSession(user);
     recordAttempt(ip, true);
     setCookie(c, COOKIE, session.token, cookieOptions(isSecure(c)));
@@ -174,7 +174,7 @@ app.post("/api/auth/setup", async (c) => {
   } catch (err) {
     recordAttempt(ip, false);
     logError("setup failed");
-    return c.json({ error: err instanceof Error ? err.message : "Setup failed." }, 400);
+    return c.json({ error: "account_invalid" }, 400);
   }
 });
 
@@ -182,11 +182,11 @@ app.post("/api/auth/login", async (c) => {
   const body = await c.req.json().catch(() => ({}));
   const username = String((body as { username?: string }).username ?? "");
   const ip = `${clientIp(c)}:${username}`;
-  if (rateLimited(ip)) return c.json({ error: "Too many attempts." }, 429);
+  if (rateLimited(ip)) return c.json({ error: "too_many_attempts" }, 429);
   const user = verifyUser(username, String((body as { password?: string }).password ?? ""));
   if (!user) {
     recordAttempt(ip, false);
-    return c.json({ error: "Invalid credentials." }, 401);
+    return c.json({ error: "invalid_credentials" }, 401);
   }
   recordAttempt(ip, true);
   destroySession(getCookie(c, COOKIE));
@@ -209,33 +209,33 @@ app.get("/api/auth/me", (c) => {
 
 app.post("/api/auth/password", async (c) => {
   const user = sessionUser(getCookie(c, COOKIE));
-  if (!user) return c.json({ error: "Unauthorized." }, 401);
+  if (!user) return c.json({ error: "unauthorized" }, 401);
   const ip = clientIp(c);
-  if (rateLimited(`${ip}:pw`)) return c.json({ error: "Too many attempts." }, 429);
+  if (rateLimited(`${ip}:pw`)) return c.json({ error: "too_many_attempts" }, 429);
   const body = await c.req.json().catch(() => ({}));
   const current = String((body as { current?: string }).current ?? "");
   const next = String((body as { next?: string }).next ?? "");
   try {
     const ok = changeUserPassword(user.id, current, next);
     recordAttempt(`${ip}:pw`, ok);
-    if (!ok) return c.json({ error: "Invalid credentials." }, 401);
+    if (!ok) return c.json({ error: "invalid_credentials" }, 401);
     destroyOtherSessions(user.id, getCookie(c, COOKIE));
     return c.json({ ok: true });
   } catch (err) {
     recordAttempt(`${ip}:pw`, false);
-    return c.json({ error: err instanceof Error ? err.message : "Could not change password." }, 400);
+    return c.json({ error: "account_invalid" }, 400);
   }
 });
 
 app.use("/api/vault/*", async (c, next) => {
   const user = sessionUser(getCookie(c, COOKIE));
-  if (!user) return c.json({ error: "Unauthorized." }, 401);
+  if (!user) return c.json({ error: "unauthorized" }, 401);
   await next();
 });
 
 app.use("/api/prefs/*", async (c, next) => {
   const user = sessionUser(getCookie(c, COOKIE));
-  if (!user) return c.json({ error: "Unauthorized." }, 401);
+  if (!user) return c.json({ error: "unauthorized" }, 401);
   await next();
 });
 
@@ -262,7 +262,7 @@ app.put("/api/vault/records/:id", async (c) => {
 
 app.delete("/api/vault/records/:id", async (c) => {
   const id = opaqueIdSchema.safeParse(c.req.param("id"));
-  if (!id.success) return c.json({ error: "Invalid id." }, 400);
+  if (!id.success) return c.json({ error: "invalid_id" }, 400);
   await store.deleteRecord(id.data);
   return c.json({ ok: true });
 });
@@ -273,9 +273,9 @@ app.get("/api/vault/attachments", async (c) => {
 
 app.get("/api/vault/attachments/:id", async (c) => {
   const id = opaqueIdSchema.safeParse(c.req.param("id"));
-  if (!id.success) return c.json({ error: "Invalid id." }, 400);
+  if (!id.success) return c.json({ error: "invalid_id" }, 400);
   const attachment = await store.getAttachment(id.data);
-  if (!attachment) return c.json({ error: "Not found." }, 404);
+  if (!attachment) return c.json({ error: "not_found" }, 404);
   return c.json({ attachment });
 });
 
@@ -287,7 +287,7 @@ app.put("/api/vault/attachments/:id", async (c) => {
 
 app.delete("/api/vault/attachments/:id", async (c) => {
   const id = opaqueIdSchema.safeParse(c.req.param("id"));
-  if (!id.success) return c.json({ error: "Invalid id." }, 400);
+  if (!id.success) return c.json({ error: "invalid_id" }, 400);
   await store.deleteAttachment(id.data);
   return c.json({ ok: true });
 });
@@ -307,28 +307,28 @@ app.post("/api/vault/wipe", async (c) => {
 });
 
 app.get("/api/meta/db-path", (c) => {
-  if (!sessionUser(getCookie(c, COOKIE))) return c.json({ error: "Unauthorized." }, 401);
+  if (!sessionUser(getCookie(c, COOKIE))) return c.json({ error: "unauthorized" }, 401);
   return c.json({ path: dbPath() });
 });
 
 app.get("/api/prefs/:key", (c) => {
   const key = opaqueIdSchema.safeParse(c.req.param("key"));
-  if (!key.success) return c.json({ error: "Invalid key." }, 400);
+  if (!key.success) return c.json({ error: "invalid_key" }, 400);
   return c.json({ value: store.getKv(key.data) });
 });
 
 app.put("/api/prefs/:key", async (c) => {
   const key = opaqueIdSchema.safeParse(c.req.param("key"));
-  if (!key.success) return c.json({ error: "Invalid key." }, 400);
+  if (!key.success) return c.json({ error: "invalid_key" }, 400);
   const body = await c.req.json();
   if (typeof body.value !== "string" || body.value.length > PREF_VALUE_MAX) {
-    return c.json({ error: "Invalid pref." }, 400);
+    return c.json({ error: "invalid_pref" }, 400);
   }
   store.setKv(key.data, body.value);
   return c.json({ ok: true });
 });
 
-app.all("/api/*", (c) => c.json({ error: "Not found." }, 404));
+app.all("/api/*", (c) => c.json({ error: "not_found" }, 404));
 
 const webDist = path.resolve(__dirname, "../../web/dist");
 if (fs.existsSync(webDist)) {

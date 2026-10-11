@@ -195,11 +195,20 @@ export interface EnvEntry {
   raw?: string;
 }
 
+/** What is wrong with a line. The UI turns these into locale text. */
+export type EnvErrorCode = "missing-assignment" | "invalid-key" | "unterminated-escape" | "unterminated-quote";
+
+export interface EnvParseError {
+  line: number;
+  code: EnvErrorCode;
+  key?: string;
+}
+
 export interface EnvParseResult {
   entries: EnvEntry[];
   comments: { line: number; text: string }[];
   duplicates: string[];
-  errors: { line: number; message: string }[];
+  errors: EnvParseError[];
 }
 
 export interface EnvImportDecision {

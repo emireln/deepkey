@@ -372,6 +372,18 @@ export const en = {
     "Use 20 or more characters, or at least three kinds of character (uppercase, lowercase, digits, symbols). Avoid repeating a few characters.",
   deleteVaultSubDesktop:
     "This removes the local encrypted database and the automatic backups DeepKey wrote for it. There is no recovery. Backups you exported by hand are not touched.",
+  errInvalidCredentials: "Wrong login name or password.",
+  errTooManyAttempts: "Too many attempts. Wait a few minutes and try again.",
+  errSetupDone: "This instance is already set up. Sign in instead.",
+  errSetupToken: "The setup token is wrong. Copy it again from setup.token.",
+  errAccountInvalid:
+    "The login name needs 3 to 80 letters, digits, or . _ @ + -. The password needs at least 10 characters.",
+  errForbidden: "That request was blocked. Reload the page and try again.",
+  errTooLarge: "That request is too large.",
+  envErrMissing: "Expected KEY=value.",
+  envErrInvalidKey: 'Invalid name "{key}". Use letters, numbers, underscores, or dots.',
+  envErrEscape: "The text ends in the middle of an escape sequence.",
+  envErrQuote: "A quoted value is not closed.",
 };
 
 export type MessageKey = keyof typeof en;
