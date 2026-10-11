@@ -112,6 +112,19 @@ describe("crypto", () => {
     expect(() => deriveKek("password", params)).toThrow(/floor/);
   });
 
+  it("rejects kdf params above the ceiling before running argon2", () => {
+    const params: KdfParams = {
+      algorithm: "argon2id",
+      version: 0x13,
+      t: 3,
+      m: 2 ** 31,
+      p: 1,
+      dkLen: 32,
+      salt: bytesToB64(crypto.getRandomValues(new Uint8Array(16))),
+    };
+    expect(() => deriveKek("password", params)).toThrow(/ceiling/);
+  });
+
   it("envelopeFromParts roundtrips", () => {
     const env = envelopeFromParts("YQ==", "Yg==");
     expect(env.alg).toBe("xchacha20poly1305");

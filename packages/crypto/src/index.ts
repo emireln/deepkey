@@ -151,6 +151,10 @@ export function deriveKek(password: string, params: KdfParams): Uint8Array {
   if (params.m < KDF_MIN.m || params.t < KDF_MIN.t || params.p < 1 || params.dkLen !== 32) {
     throw new CryptoError("KDF parameters below the secure floor.");
   }
+  // A tampered header could ask for gigabytes of memory. Refuse before argon2 allocates anything.
+  if (params.m > KDF_MAX.m || params.t > KDF_MAX.t || params.p > KDF_MAX.p) {
+    throw new CryptoError("KDF parameters above the supported ceiling.");
+  }
   const salt = b64ToBytes(params.salt);
   if (salt.length < 16) {
     throw new CryptoError("KDF salt too short.");

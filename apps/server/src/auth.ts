@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { timingSafeEqual } from "node:crypto";
 import { AUTH_MAX_ATTEMPTS, AUTH_WINDOW_MS, SESSION_MAX_AGE_MS } from "@deepkey/config";
 import { deriveKek, randomBytes, sha256Hex, bytesToB64, b64ToBytes } from "@deepkey/crypto";
 import { sqliteVaultStore } from "@deepkey/database";
@@ -94,8 +95,14 @@ export function verifyUser(username: string, password: string): string | null {
   }
   const kdf = JSON.parse(row.kdf) as KdfParams;
   const hash = bytesToB64(deriveKek(password, kdf));
-  if (hash !== row.password_hash) return null;
+  if (!sameHash(hash, row.password_hash)) return null;
   return row.id;
+}
+
+function sameHash(a: string, b: string): boolean {
+  const left = Buffer.from(a);
+  const right = Buffer.from(b);
+  return left.length === right.length && timingSafeEqual(left, right);
 }
 
 export function createSession(userId: string): { token: string; expiresAt: number } {
@@ -127,7 +134,7 @@ export function changeUserPassword(userId: string, current: string, next: string
   if (!row) return false;
   const kdf = JSON.parse(row.kdf) as KdfParams;
   const currentHash = bytesToB64(deriveKek(current, kdf));
-  if (currentHash !== row.password_hash) return false;
+  if (!sameHash(currentHash, row.password_hash)) return false;
   const parsedNext = authPasswordSchema.parse(next);
   const nextKdf: KdfParams = {
     algorithm: "argon2id",
