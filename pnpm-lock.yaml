@@ -87,6 +87,9 @@ importers:
       vite:
         specifier: ^7.1.5
         version: 7.3.6(@types/node@24.13.5)(jiti@2.7.0)(tsx@4.23.13)
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.5)(jiti@2.7.0)(tsx@4.23.13)
 
   apps/server:
     dependencies:
@@ -300,6 +303,9 @@ importers:
       typescript:
         specifier: ^5.9.2
         version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.5)(jiti@2.7.0)(tsx@4.23.13)
 
   packages/validation:
     dependencies:
