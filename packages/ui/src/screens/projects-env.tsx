@@ -20,6 +20,7 @@ export function ProjectsScreen() {
   const [creating, setCreating] = useState(params.get("new") === "1");
   const navigate = useNavigate();
   const projects = engine.projects();
+  const archived = engine.allProjects().filter((p) => p.archived);
   return (
     <div>
       <div className="page-head">
@@ -83,6 +84,28 @@ export function ProjectsScreen() {
       ) : (
         <EmptyState title={t("noProjects")} actions={<Button variant="primary" onClick={() => setCreating(true)}>{t("newProject")}</Button>} />
       )}
+      {archived.length ? (
+        <>
+          <h2 className="section-title" style={{ marginTop: 32 }}>
+            {t("archivedProjects")}
+          </h2>
+          <div className="list">
+            {archived.map((project) => (
+              <div key={project.id} className="list-row" style={{ gridTemplateColumns: "1fr auto" }}>
+                <span>{project.name}</span>
+                <Button
+                  onClick={async () => {
+                    await engine.updateProject(project.id, { archived: false });
+                    refresh();
+                  }}
+                >
+                  {t("unarchive")}
+                </Button>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }

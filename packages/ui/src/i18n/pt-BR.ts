@@ -293,4 +293,6 @@ export const ptBR: Messages = {
   vaultIntegrity: "Os dados do cofre falharam na verificação de integridade. Nada foi alterado.",
   lockOnDesktopLock: "Bloquear quando o computador for bloqueado",
   lockOnExit: "Bloquear quando a janela for fechada para a bandeja",
+  archivedProjects: "Projetos arquivados",
+  unarchive: "Desarquivar",
 };

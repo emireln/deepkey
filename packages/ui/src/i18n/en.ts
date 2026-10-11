@@ -291,6 +291,8 @@ export const en = {
   vaultIntegrity: "The vault data failed an integrity check. Nothing was changed.",
   lockOnDesktopLock: "Lock when the desktop locks",
   lockOnExit: "Lock when the window closes to the tray",
+  archivedProjects: "Archived projects",
+  unarchive: "Unarchive",
 };
 
 export type MessageKey = keyof typeof en;

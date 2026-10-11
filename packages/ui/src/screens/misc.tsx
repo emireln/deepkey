@@ -13,18 +13,49 @@ export function TrashScreen() {
   void tick;
   const toast = useToast();
   const [emptyOpen, setEmptyOpen] = useState(false);
-  const [permanentId, setPermanentId] = useState<string | null>(null);
-  const items = engine.trashItems();
+  const [permanent, setPermanent] = useState<{ kind: "item" | "project"; id: string } | null>(null);
+  const projects = engine.trashProjects();
+  const trashedProjectIds = new Set(projects.map((p) => p.id));
+  // Items that belong to a trashed project come back with it, so they are not listed twice.
+  const items = engine.trashItems().filter((item) => !(item.projectId && trashedProjectIds.has(item.projectId)));
+  const nothing = !projects.length && !items.length;
   return (
     <div>
       <div className="page-head">
         <h1 className="page-title">{t("trash")}</h1>
-        {items.length ? (
+        {!nothing ? (
           <Button variant="danger" onClick={() => setEmptyOpen(true)}>
             {t("emptyTrash")}
           </Button>
         ) : null}
       </div>
+      {projects.length ? (
+        <>
+          <h2 className="section-title">{t("projects")}</h2>
+          <div className="list">
+            {projects.map((project) => (
+              <div key={project.id} className="list-row" style={{ gridTemplateColumns: "1.4fr 1fr auto" }}>
+                <span>{project.name}</span>
+                <span className="cell-muted">{formatDate(project.deletedAt ?? project.updatedAt)}</span>
+                <span className="row-actions">
+                  <Button
+                    onClick={async () => {
+                      await engine.restoreProject(project.id);
+                      refresh();
+                      toast(t("restored"));
+                    }}
+                  >
+                    {t("restore")}
+                  </Button>
+                  <Button variant="danger" onClick={() => setPermanent({ kind: "project", id: project.id })}>
+                    {t("deleteForever")}
+                  </Button>
+                </span>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : null}
       {items.length ? (
         <div className="list">
           {items.map((item) => (
@@ -41,16 +72,15 @@ export function TrashScreen() {
                 >
                   {t("restore")}
                 </Button>
-                <Button variant="danger" onClick={() => setPermanentId(item.id)}>
+                <Button variant="danger" onClick={() => setPermanent({ kind: "item", id: item.id })}>
                   {t("deleteForever")}
                 </Button>
               </span>
             </div>
           ))}
         </div>
-      ) : (
-        <EmptyState title={t("noTrash")} />
-      )}
+      ) : null}
+      {nothing ? <EmptyState title={t("noTrash")} /> : null}
       {emptyOpen ? (
         <Dialog
           title={t("emptyTrash")}
@@ -65,17 +95,18 @@ export function TrashScreen() {
           }}
         />
       ) : null}
-      {permanentId ? (
+      {permanent ? (
         <Dialog
           title={t("confirmPermanent")}
           body={t("confirmPermanentSub")}
           confirm={t("deleteForever")}
           danger
-          onCancel={() => setPermanentId(null)}
+          onCancel={() => setPermanent(null)}
           onConfirm={async () => {
-            await engine.deletePermanent(permanentId);
+            if (permanent.kind === "project") await engine.deleteProjectPermanently(permanent.id);
+            else await engine.deletePermanent(permanent.id);
             refresh();
-            setPermanentId(null);
+            setPermanent(null);
           }}
         />
       ) : null}
