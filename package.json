@@ -1,6 +1,6 @@
 {
   "name": "deepkey",
-  "version": "1.0.40",
+  "version": "1.0.41",
   "private": true,
   "description": "Personal self-hosted encrypted vault for secrets, .env files, keys, and notes.",
   "license": "MIT",
@@ -22,13 +22,5 @@
     "cli": "pnpm --filter @deepkey/cli start --",
     "prepare": "node scripts/install-hooks.mjs",
     "bump": "node scripts/bump-version.mjs"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "better-sqlite3",
-      "electron",
-      "esbuild",
-      "electron-winstaller"
-    ]
   }
 }
