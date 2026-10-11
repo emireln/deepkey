@@ -347,6 +347,18 @@ export const en = {
   expiresInDays: "Expires in {n} days",
   fieldsLabel: "Fields",
   customFieldsLabel: "Custom fields",
+  pwVeryWeak: "Very weak",
+  pwWeak: "Weak",
+  pwFair: "Fair",
+  pwStrong: "Strong",
+  pwExcellent: "Excellent",
+  pwHintLength: "Use at least 12 characters.",
+  pwHintLowercase: "Add a lowercase letter.",
+  pwHintUppercase: "Add an uppercase letter.",
+  pwHintNumber: "Add a number.",
+  pwHintSymbol: "Add a symbol.",
+  pwHintCommon: "Avoid common passwords.",
+  pwHintName: "Do not include your name.",
 };
 
 export type MessageKey = keyof typeof en;

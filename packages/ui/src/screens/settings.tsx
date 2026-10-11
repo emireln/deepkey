@@ -2,6 +2,7 @@ import { AUTO_LOCK_OPTIONS, CLIPBOARD_TIMEOUTS, DATABASE_SCHEMA_VERSION, CRYPTO_
 import { DEFAULT_UI_SETTINGS, type AppSettings } from "@deepkey/types";
 import { inspectBackup } from "@deepkey/vault-core";
 import { scorePassword } from "@deepkey/validation";
+import { strengthLabel } from "../lib/strength.js";
 import { useEffect, useState } from "react";
 import { AvatarCrop } from "../components/AvatarCrop.js";
 import { Button, Checkbox, Field, Input, Select } from "../components/controls.js";
@@ -275,7 +276,7 @@ export function SettingsScreen({ initial = "general" }: { initial?: Category }) 
               <Field label={t("newPassword")}>
                 <Input type="password" value={nextPw} onChange={(e) => setNextPw(e.target.value)} />
               </Field>
-              <p className="hint">{scorePassword(nextPw).label}</p>
+              <p className="hint">{strengthLabel(scorePassword(nextPw))}</p>
               {passwordError ? <p className="error-text">{passwordError}</p> : null}
               <Button
                 disabled={currentPw.length < 12 || nextPw.length < 12}

@@ -7,6 +7,13 @@ describe("validation", () => {
     expect(scorePassword("Correct-Horse-Battery-Staple-99").score).toBeGreaterThan(2);
   });
 
+  it("reports password hints as codes the UI can translate", () => {
+    expect(scorePassword("short").hints).toEqual(expect.arrayContaining(["length", "uppercase", "number", "symbol"]));
+    expect(scorePassword("short").hints).not.toContain("lowercase");
+    expect(scorePassword("Correct-Horse-Battery-Staple-99").hints).toEqual([]);
+    expect(scorePassword("Maria-Vault-2026-Strong", ["Maria"]).hints).toContain("name");
+  });
+
   it("hints known formats without rejecting unknown keys", () => {
     expect(formatHint("https://example.com")).toBe("url");
     expect(formatHint("550e8400-e29b-41d4-a716-446655440000")).toBe("uuid");

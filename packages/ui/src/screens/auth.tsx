@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { AUTO_LOCK_OPTIONS, CLIPBOARD_TIMEOUTS } from "@deepkey/config";
 import { scorePassword } from "@deepkey/validation";
+import { strengthHint, strengthLabel } from "../lib/strength.js";
 import { Logo } from "../components/Logo.js";
 import { LoadingScreen } from "../components/LoadingScreen.js";
 import { Button, Checkbox, Field, Input, Select } from "../components/controls.js";
@@ -45,7 +46,7 @@ export function DesktopOnboarding() {
               <div className={`strength s${strength.score}`}>
                 <span style={{ width: `${(strength.score + 1) * 20}%` }} />
               </div>
-              <p className="hint">{strength.hints[0] ?? strength.label}</p>
+              <p className="hint">{strength.hints[0] ? strengthHint(strength.hints[0]) : strengthLabel(strength)}</p>
             </Field>
             <Field label={t("confirmPassword")}>
               <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />

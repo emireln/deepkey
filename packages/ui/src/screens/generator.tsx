@@ -2,6 +2,7 @@ import { ArrowsClockwise, Check, Copy, Vault } from "@phosphor-icons/react";
 import { useMemo, useState } from "react";
 import { DEFAULT_GENERATOR, generateSecret } from "@deepkey/vault-core";
 import { scorePassword } from "@deepkey/validation";
+import { strengthLabel } from "../lib/strength.js";
 import { Button, Checkbox, Field, Input, Select, Textarea } from "../components/controls.js";
 import { t } from "../i18n/index.js";
 import { useVault } from "../state/vault.js";
@@ -146,7 +147,7 @@ export function GeneratorScreen() {
                 <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 14, color: "var(--text-secondary)" }}>
                   <span>{t("strengthLabel")}</span>
                   <span style={{ fontWeight: 700, color: score.score >= 3 ? "var(--success)" : score.score === 2 ? "var(--warning)" : "var(--danger)" }}>
-                    {score.label}
+                    {strengthLabel(score)}
                   </span>
                 </div>
               </div>

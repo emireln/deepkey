@@ -157,24 +157,27 @@ const COMMON = new Set([
   "masterpassword",
 ]);
 
+/** Codes, not sentences, so the UI can translate them. */
+export type PasswordHint = "length" | "lowercase" | "uppercase" | "number" | "symbol" | "common" | "name";
+
 export interface PasswordStrength {
   score: 0 | 1 | 2 | 3 | 4;
   label: "very weak" | "weak" | "fair" | "strong" | "excellent";
-  hints: string[];
+  hints: PasswordHint[];
 }
 
 export function scorePassword(password: string, extras: string[] = []): PasswordStrength {
-  const hints: string[] = [];
-  if (password.length < 12) hints.push("Use at least 12 characters.");
-  if (!/[a-z]/.test(password)) hints.push("Add a lowercase letter.");
-  if (!/[A-Z]/.test(password)) hints.push("Add an uppercase letter.");
-  if (!/[0-9]/.test(password)) hints.push("Add a number.");
-  if (!/[^A-Za-z0-9]/.test(password)) hints.push("Add a symbol.");
+  const hints: PasswordHint[] = [];
+  if (password.length < 12) hints.push("length");
+  if (!/[a-z]/.test(password)) hints.push("lowercase");
+  if (!/[A-Z]/.test(password)) hints.push("uppercase");
+  if (!/[0-9]/.test(password)) hints.push("number");
+  if (!/[^A-Za-z0-9]/.test(password)) hints.push("symbol");
   const lower = password.toLowerCase();
-  if (COMMON.has(lower)) hints.push("Avoid common passwords.");
+  if (COMMON.has(lower)) hints.push("common");
   for (const extra of extras) {
     if (extra && extra.length >= 3 && lower.includes(extra.toLowerCase())) {
-      hints.push("Do not include your name.");
+      hints.push("name");
       break;
     }
   }
