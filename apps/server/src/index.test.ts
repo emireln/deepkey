@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { app } from "./index.js";
 
+const OWN_CLIENT = { "x-deepkey-request": "1", "content-type": "application/json" };
+
 describe("server security", () => {
   it("health is public", async () => {
     const res = await app.request("/health");
@@ -14,7 +16,7 @@ describe("server security", () => {
   });
 
   it("rejects unauthenticated password change", async () => {
-    const res = await app.request("/api/auth/password", { method: "POST", body: "{}" });
+    const res = await app.request("/api/auth/password", { method: "POST", headers: OWN_CLIENT, body: "{}" });
     expect(res.status).toBe(401);
   });
 
@@ -24,7 +26,7 @@ describe("server security", () => {
   });
 
   it("rejects unauthenticated vault deletes even with junk ids", async () => {
-    const res = await app.request("/api/vault/records/../x", { method: "DELETE" });
+    const res = await app.request("/api/vault/records/../x", { method: "DELETE", headers: OWN_CLIENT });
     expect(res.status).toBe(401);
   });
 
@@ -37,10 +39,19 @@ describe("server security", () => {
   it("rejects invalid origin on mutations", async () => {
     const res = await app.request("/api/auth/login", {
       method: "POST",
-      headers: { origin: "https://evil.example", host: "localhost:8787", "content-type": "application/json" },
+      headers: { origin: "https://evil.example", host: "localhost:8787", "content-type": "application/json", "x-deepkey-request": "1" },
       body: JSON.stringify({ username: "a", password: "bbbbbbbbbb" }),
     });
     expect(res.status).toBe(403);
+  });
+
+  it("rejects mutations that lack the request header, even from a localhost origin", async () => {
+    const res = await app.request("/api/vault/wipe", {
+      method: "POST",
+      headers: { origin: "http://localhost:3000", host: "localhost:8787" },
+    });
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({ error: "Missing request header." });
   });
 
   it("does not let a rotating X-Forwarded-For reset the login limit", async () => {
@@ -48,7 +59,7 @@ describe("server security", () => {
     for (let i = 0; i < 6; i += 1) {
       const res = await app.request("/api/auth/login", {
         method: "POST",
-        headers: { "content-type": "application/json", "x-forwarded-for": `203.0.113.${i}` },
+        headers: { ...OWN_CLIENT, "x-forwarded-for": `203.0.113.${i}` },
         body: JSON.stringify({ username: "nobody-here", password: "wrong-password-xx" }),
       });
       statuses.push(res.status);

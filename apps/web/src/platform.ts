@@ -5,7 +5,7 @@ import { APP_VERSION } from "@deepkey/config";
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
     credentials: "same-origin",
-    headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
+    headers: { "content-type": "application/json", "x-deepkey-request": "1", ...(init?.headers ?? {}) },
     ...init,
   });
   if (!res.ok) {

@@ -103,9 +103,15 @@ app.use(
   }),
 );
 
+// Our own client sends this on every mutation. A page on another origin cannot add it without a CORS
+// preflight, and this server never answers one. Origin checks alone do not stop a page on another
+// localhost port, because the browser treats that as same-site and sends the session cookie.
+const REQUEST_HEADER = "x-deepkey-request";
+
 app.use("*", async (c, next) => {
-  if (["POST", "PUT", "PATCH", "DELETE"].includes(c.req.method) && !originAllowed(c)) {
-    return c.json({ error: "Invalid origin." }, 403);
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(c.req.method)) {
+    if (!originAllowed(c)) return c.json({ error: "Invalid origin." }, 403);
+    if (c.req.header(REQUEST_HEADER) !== "1") return c.json({ error: "Missing request header." }, 403);
   }
   await next();
 });
