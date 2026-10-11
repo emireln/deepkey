@@ -17,6 +17,8 @@ There is no recovery key I hold. I cannot unlock your vault.
 
 Every record gets its own nonce. If ciphertext, nonce, or associated data is changed, decrypt fails and the app treats it as bad data.
 
+Records and files are bound to their id. The id is part of the associated data, so a copy of one row's ciphertext moved into another row does not decrypt. Records and files written before this change are re-encrypted the first time the vault opens.
+
 KDF params below the floor (`m < 19456` or `t < 3`) are rejected, and so are params above the ceiling (`t > 6`, `m > 262144`, `p > 4`) and any Argon2 version other than 0x13. Old vaults cannot silently become weaker, and a tampered header cannot make unlock allocate gigabytes.
 
 Changing the master password re-wraps the DEK. Item ciphertext stays. That is on purpose: re-encrypting the whole vault on a password change is slow and easy to get wrong.

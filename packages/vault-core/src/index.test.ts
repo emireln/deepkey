@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { KDF_MIN } from "@deepkey/config";
+import { AAD_ATTACHMENT, AAD_RECORD, CRYPTO_FORMAT_LEGACY_VERSION, CRYPTO_FORMAT_VERSION, KDF_MIN } from "@deepkey/config";
+import { encryptBytes, utf8 } from "@deepkey/crypto";
 import { mergeAppSettings } from "@deepkey/types";
 import { inspectBackup, MemoryVaultStore, VaultEngine, generateSecret, randomUuid } from "./index.js";
 
@@ -224,6 +225,32 @@ describe("vault-core", () => {
 
     await vault.updateProject(project.id, { archived: false });
     expect(vault.projects().map((p) => p.id)).toContain(project.id);
+  });
+
+  it("re-encrypts records and files from the first format when the vault opens", async () => {
+    const { store, vault } = await ready();
+    const secret = await vault.createItem({ type: "token", name: "legacy", fields: { value: "v1-secret" } });
+    const file = await vault.createItem({ type: "file", name: "legacy-file" });
+    await vault.putFile(file.id, "a.txt", "text/plain", new TextEncoder().encode("legacy-bytes"));
+    const attachmentId = vault.getItem(file.id)!.attachmentId!;
+    const dek = vault.copyDek()!;
+
+    // Write the item and the file the way the first format did: the bare label, envelope version 1.
+    const plainFile = await vault.readFile(file.id);
+    const legacyRecord = encryptBytes(dek, utf8(JSON.stringify(vault.getItem(secret.id))), AAD_RECORD, CRYPTO_FORMAT_LEGACY_VERSION);
+    const row = (await store.listRecords()).find((r) => r.id === secret.id)!;
+    await store.putRecord({ ...row, nonce: legacyRecord.n, ciphertext: legacyRecord.c, aad: AAD_RECORD, cryptoVersion: legacyRecord.v });
+    const legacyFile = encryptBytes(dek, plainFile.bytes, AAD_ATTACHMENT, CRYPTO_FORMAT_LEGACY_VERSION);
+    const storedFile = (await store.getAttachment(attachmentId))!;
+    await store.putAttachment({ ...storedFile, nonce: legacyFile.n, ciphertext: legacyFile.c, cryptoVersion: legacyFile.v });
+
+    vault.lock();
+    await vault.unlock(PASS);
+
+    expect((await store.listRecords()).find((r) => r.id === secret.id)?.cryptoVersion).toBe(CRYPTO_FORMAT_VERSION);
+    expect((await store.getAttachment(attachmentId))?.cryptoVersion).toBe(CRYPTO_FORMAT_VERSION);
+    expect(vault.getItem(secret.id)?.fields.value).toBe("v1-secret");
+    expect(new TextDecoder().decode((await vault.readFile(file.id)).bytes)).toBe("legacy-bytes");
   });
 
   it("stays locked when a stored record cannot be read", async () => {

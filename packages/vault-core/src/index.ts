@@ -1,7 +1,7 @@
 import {
   APP_VERSION,
-  AAD_RECORD,
   BACKUP_FORMAT_VERSION,
+  CRYPTO_FORMAT_LEGACY_VERSION,
   MAGIC_BACKUP,
 } from "@deepkey/config";
 import {
@@ -12,6 +12,7 @@ import {
   encryptAttachment,
   encryptRecord,
   envelopeFromParts,
+  recordAad,
   rewrapDek,
   unlockDek,
 } from "@deepkey/crypto";
@@ -99,6 +100,8 @@ export class VaultEngine {
   private dek: Uint8Array | null = null;
   private header: VaultHeader | null = null;
   private documents = new Map<string, VaultDocument>();
+  // Rows still in the first format. They are re-encrypted when the vault opens.
+  private legacyRecords: StoredRecord[] = [];
   private settings: AppSettings = structuredClone(DEFAULT_APP_SETTINGS);
   readonly store: VaultStore;
 
@@ -172,6 +175,7 @@ export class VaultEngine {
     this.dek = dek;
     try {
       await this.reload();
+      await this.upgradeLegacyRows();
     } catch (err) {
       // Do not stay unlocked with the key in memory when the records cannot be read.
       this.lock();
@@ -179,6 +183,40 @@ export class VaultEngine {
       throw err;
     }
     await this.purgeExpiredTrash();
+  }
+
+  /**
+   * Records and files written before they were bound to their ids are re-encrypted once the vault is open.
+   * Until then, a copy of one of them could still be moved to another row without being noticed.
+   */
+  private async upgradeLegacyRows(): Promise<void> {
+    const dek = this.requireDek();
+    for (const record of this.legacyRecords) {
+      const doc = this.documents.get(record.id);
+      if (!doc) continue;
+      const envelope = encryptRecord(dek, doc, record.id);
+      await this.store.putRecord({
+        ...record,
+        nonce: envelope.n,
+        ciphertext: envelope.c,
+        aad: recordAad(record.id),
+        cryptoVersion: envelope.v,
+      });
+    }
+    this.legacyRecords = [];
+    for (const attachment of await this.store.listAttachments()) {
+      if (attachment.cryptoVersion !== CRYPTO_FORMAT_LEGACY_VERSION) continue;
+      const envelope = envelopeFromParts(attachment.nonce, attachment.ciphertext, attachment.cryptoVersion);
+      const bytes = decryptAttachment(dek, envelope, attachment.id);
+      const upgraded = encryptAttachment(dek, bytes, attachment.id);
+      disposeBytes(bytes);
+      await this.store.putAttachment({
+        ...attachment,
+        nonce: upgraded.n,
+        ciphertext: upgraded.c,
+        cryptoVersion: upgraded.v,
+      });
+    }
   }
 
   copyDek(): Uint8Array | null {
@@ -228,30 +266,33 @@ export class VaultEngine {
     const dek = this.requireDek();
     const records = await this.store.listRecords();
     const docs = new Map<string, VaultDocument>();
+    const legacy: StoredRecord[] = [];
     for (const record of records) {
       const envelope = envelopeFromParts(record.nonce, record.ciphertext, record.cryptoVersion);
       let doc: VaultDocument;
       try {
-        doc = decryptRecord<VaultDocument>(dek, envelope);
+        doc = decryptRecord<VaultDocument>(dek, envelope, record.id);
       } catch {
         throw new VaultIntegrityError();
       }
-      // Ciphertext moved to another row still decrypts. The row has to hold the document it was written as.
+      // A first-format record can still be moved to another row. The row has to hold the document it was written as.
       if (doc.id !== record.id) throw new VaultIntegrityError();
       docs.set(doc.id, doc);
+      if (record.cryptoVersion === CRYPTO_FORMAT_LEGACY_VERSION) legacy.push(record);
     }
     this.documents = docs;
+    this.legacyRecords = legacy;
   }
 
   private async putDocument(doc: VaultDocument): Promise<void> {
     const dek = this.requireDek();
-    const envelope = encryptRecord(dek, doc);
+    const envelope = encryptRecord(dek, doc, doc.id);
     const existing = this.documents.get(doc.id);
     const record: StoredRecord = {
       id: doc.id,
       nonce: envelope.n,
       ciphertext: envelope.c,
-      aad: AAD_RECORD,
+      aad: recordAad(doc.id),
       cryptoVersion: envelope.v,
       createdAt: "createdAt" in doc ? doc.createdAt : now(),
       updatedAt: "updatedAt" in doc ? doc.updatedAt : now(),
@@ -606,9 +647,10 @@ export class VaultEngine {
     if (item.attachmentId) {
       await this.store.deleteAttachment(item.attachmentId);
     }
-    const envelope = encryptAttachment(dek, bytes);
+    const attachmentId = newId();
+    const envelope = encryptAttachment(dek, bytes, attachmentId);
     const attachment: StoredAttachment = {
-      id: newId(),
+      id: attachmentId,
       recordId: item.id,
       nonce: envelope.n,
       ciphertext: envelope.c,
@@ -630,7 +672,7 @@ export class VaultEngine {
     const stored = await this.store.getAttachment(item.attachmentId);
     if (!stored) throw new Error("File not found.");
     const dek = this.requireDek();
-    const bytes = decryptAttachment(dek, envelopeFromParts(stored.nonce, stored.ciphertext, stored.cryptoVersion));
+    const bytes = decryptAttachment(dek, envelopeFromParts(stored.nonce, stored.ciphertext, stored.cryptoVersion), stored.id);
     return { name: item.attachmentName ?? "file", mime: item.attachmentMime ?? "application/octet-stream", bytes };
   }
 

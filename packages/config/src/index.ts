@@ -7,14 +7,20 @@ export const SOURCE_URL = "https://github.com/emireln/deepkey";
 export const SUPPORT_URL = "https://buymeacoffee.com/emireln";
 
 export const VAULT_FORMAT_VERSION = 1;
-export const CRYPTO_FORMAT_VERSION = 1;
+export const CRYPTO_FORMAT_VERSION = 2;
+/** Envelopes written before records and files were bound to their ids. Still read; re-encrypted on unlock. */
+export const CRYPTO_FORMAT_LEGACY_VERSION = 1;
 export const DATABASE_SCHEMA_VERSION = 1;
 export const BACKUP_FORMAT_VERSION = 1;
 
 export const MAGIC_BACKUP = "DEEPKEYVAULT";
 export const AAD_DEK = "deepkey:dek:v1";
+/** First format: the label alone. Kept so version-1 records can still be read. */
 export const AAD_RECORD = "deepkey:record:v1";
 export const AAD_ATTACHMENT = "deepkey:attachment:v1";
+/** Current format: the label, a colon, then the record or file id. */
+export const AAD_RECORD_BOUND = "deepkey:record:v2";
+export const AAD_ATTACHMENT_BOUND = "deepkey:attachment:v2";
 
 export const DEFAULT_MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 export const DEFAULT_HISTORY_LIMIT = 25;

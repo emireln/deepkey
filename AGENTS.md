@@ -52,7 +52,7 @@ Desktop renderer: Vite on `5174`.
 - Argon2id for the KEK. Floor is `m >= 19456`, `t >= 3`. Reject weaker params.
 - XChaCha20-Poly1305 for records, attachments, and the wrapped DEK.
 - Unique nonce per envelope. Fail closed on tamper.
-- Associated data: `deepkey:dek:v1`, `deepkey:record:v1`, `deepkey:attachment:v1`.
+- Associated data: `deepkey:dek:v1` for the wrapped DEK. Records and attachments are bound to their id: `deepkey:record:v2:<id>` and `deepkey:attachment:v2:<id>`. The first format (`deepkey:record:v1`, `deepkey:attachment:v1`, envelope version 1) is still read, and those rows are re-encrypted when the vault opens.
 - Master password is never stored, logged, or sent to the server.
 - `wipe()` is the delete-vault path. Use it. Do not leave leftover ciphertext lying around if the user asked to destroy the vault.
 

@@ -2,12 +2,24 @@ import { xchacha20poly1305 } from "@noble/ciphers/chacha.js";
 import { argon2id } from "@noble/hashes/argon2.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { utf8ToBytes, bytesToHex, randomBytes as nobleRandom } from "@noble/hashes/utils.js";
-import { AAD_ATTACHMENT, AAD_DEK, AAD_RECORD, CRYPTO_FORMAT_VERSION, KDF_FLOOR, KDF_MAX, KDF_MIN } from "@deepkey/config";
+import {
+  AAD_ATTACHMENT,
+  AAD_ATTACHMENT_BOUND,
+  AAD_DEK,
+  AAD_RECORD,
+  AAD_RECORD_BOUND,
+  CRYPTO_FORMAT_LEGACY_VERSION,
+  CRYPTO_FORMAT_VERSION,
+  KDF_FLOOR,
+  KDF_MAX,
+  KDF_MIN,
+} from "@deepkey/config";
 import type { CryptoEnvelope, KdfParams, VaultHeader } from "@deepkey/types";
 
 const NONCE_LEN = 24;
 const KEY_LEN = 32;
 const SALT_LEN = 16;
+const SUPPORTED_ENVELOPE_VERSIONS: readonly number[] = [CRYPTO_FORMAT_LEGACY_VERSION, CRYPTO_FORMAT_VERSION];
 
 export class CryptoError extends Error {
   constructor(message: string) {
@@ -59,7 +71,7 @@ export function generateDek(): Uint8Array {
   return randomBytes(KEY_LEN);
 }
 
-function aeadEncrypt(key: Uint8Array, plaintext: Uint8Array, aad: Uint8Array): CryptoEnvelope {
+function aeadEncrypt(key: Uint8Array, plaintext: Uint8Array, aad: Uint8Array, version: number): CryptoEnvelope {
   if (key.length !== KEY_LEN) {
     throw new CryptoError("Invalid key length.");
   }
@@ -67,7 +79,7 @@ function aeadEncrypt(key: Uint8Array, plaintext: Uint8Array, aad: Uint8Array): C
   const cipher = xchacha20poly1305(key, nonce, aad);
   const ciphertext = cipher.encrypt(plaintext);
   return {
-    v: CRYPTO_FORMAT_VERSION,
+    v: version,
     alg: "xchacha20poly1305",
     n: bytesToB64(nonce),
     c: bytesToB64(ciphertext),
@@ -78,7 +90,7 @@ function aeadDecrypt(key: Uint8Array, envelope: CryptoEnvelope, aad: Uint8Array)
   if (envelope.alg !== "xchacha20poly1305") {
     throw new CryptoError("Unsupported cipher.");
   }
-  if (envelope.v !== CRYPTO_FORMAT_VERSION) {
+  if (!SUPPORTED_ENVELOPE_VERSIONS.includes(envelope.v)) {
     throw new CryptoError("Unsupported crypto format version.");
   }
   try {
@@ -94,25 +106,12 @@ function aeadDecrypt(key: Uint8Array, envelope: CryptoEnvelope, aad: Uint8Array)
   }
 }
 
-export function encryptBytes(key: Uint8Array, plaintext: Uint8Array, aad: string): CryptoEnvelope {
-  return aeadEncrypt(key, plaintext, utf8(aad));
+export function encryptBytes(key: Uint8Array, plaintext: Uint8Array, aad: string, version = CRYPTO_FORMAT_VERSION): CryptoEnvelope {
+  return aeadEncrypt(key, plaintext, utf8(aad), version);
 }
 
 export function decryptBytes(key: Uint8Array, envelope: CryptoEnvelope, aad: string): Uint8Array {
   return aeadDecrypt(key, envelope, utf8(aad));
-}
-
-export function encryptJson<T>(key: Uint8Array, value: T, aad = AAD_RECORD): CryptoEnvelope {
-  return encryptBytes(key, utf8(JSON.stringify(value)), aad);
-}
-
-export function decryptJson<T>(key: Uint8Array, envelope: CryptoEnvelope, aad = AAD_RECORD): T {
-  const bytes = decryptBytes(key, envelope, aad);
-  try {
-    return JSON.parse(fromUtf8(bytes)) as T;
-  } finally {
-    disposeBytes(bytes);
-  }
 }
 
 export function wrapDek(dek: Uint8Array, kek: Uint8Array): CryptoEnvelope {
@@ -128,20 +127,39 @@ export function unwrapDek(wrapped: CryptoEnvelope, kek: Uint8Array): Uint8Array 
   return dek;
 }
 
-export function encryptRecord(dek: Uint8Array, payload: unknown): CryptoEnvelope {
-  return encryptJson(dek, payload, AAD_RECORD);
+/** Records and files carry their id in the associated data, so ciphertext copied to another row fails. */
+export function recordAad(id: string): string {
+  return `${AAD_RECORD_BOUND}:${id}`;
 }
 
-export function decryptRecord<T>(dek: Uint8Array, envelope: CryptoEnvelope): T {
-  return decryptJson<T>(dek, envelope, AAD_RECORD);
+export function attachmentAad(id: string): string {
+  return `${AAD_ATTACHMENT_BOUND}:${id}`;
 }
 
-export function encryptAttachment(dek: Uint8Array, bytes: Uint8Array): CryptoEnvelope {
-  return encryptBytes(dek, bytes, AAD_ATTACHMENT);
+export function encryptRecord(dek: Uint8Array, payload: unknown, id: string): CryptoEnvelope {
+  return encryptBytes(dek, utf8(JSON.stringify(payload)), recordAad(id));
 }
 
-export function decryptAttachment(dek: Uint8Array, envelope: CryptoEnvelope): Uint8Array {
-  return decryptBytes(dek, envelope, AAD_ATTACHMENT);
+export function decryptRecord<T>(dek: Uint8Array, envelope: CryptoEnvelope, id: string): T {
+  const bytes = decryptBytes(dek, envelope, versionAad(envelope, AAD_RECORD, recordAad(id)));
+  try {
+    return JSON.parse(fromUtf8(bytes)) as T;
+  } finally {
+    disposeBytes(bytes);
+  }
+}
+
+export function encryptAttachment(dek: Uint8Array, bytes: Uint8Array, id: string): CryptoEnvelope {
+  return encryptBytes(dek, bytes, attachmentAad(id));
+}
+
+export function decryptAttachment(dek: Uint8Array, envelope: CryptoEnvelope, id: string): Uint8Array {
+  return decryptBytes(dek, envelope, versionAad(envelope, AAD_ATTACHMENT, attachmentAad(id)));
+}
+
+/** First-format envelopes used the bare label. Everything newer is bound to its id. */
+function versionAad(envelope: CryptoEnvelope, legacy: string, bound: string): string {
+  return envelope.v === CRYPTO_FORMAT_LEGACY_VERSION ? legacy : bound;
 }
 
 export function deriveKek(password: string, params: KdfParams): Uint8Array {
@@ -312,4 +330,4 @@ export function envelopeFromParts(nonceB64: string, ciphertextB64: string, versi
   };
 }
 
-export { AAD_ATTACHMENT, AAD_DEK, AAD_RECORD };
+export { AAD_ATTACHMENT, AAD_ATTACHMENT_BOUND, AAD_DEK, AAD_RECORD, AAD_RECORD_BOUND };
