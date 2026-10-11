@@ -35,7 +35,7 @@ Custom titlebar. Traffic-light space on macOS, min / max / close on Windows and 
 
 Privacy mode can ask Electron to mark the window as protected from capture. That flag is OS-dependent. Do not bet your job on it.
 
-Lock on blur / sleep / OS lock follows what you picked in settings.
+Lock on blur / sleep / OS lock follows what you picked in settings. Closing the window to the tray also locks the vault, unless you turn off "Lock when the window closes to the tray". The process keeps running, so the key would otherwise stay in memory.
 
 ## OS unlock
 

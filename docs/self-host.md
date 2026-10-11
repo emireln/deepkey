@@ -12,6 +12,8 @@ docker compose up -d
 
 App: `http://127.0.0.1:8787`
 
+The compose file publishes the port on `127.0.0.1` only. The app speaks plain HTTP, so reach it from this machine, or put a TLS reverse proxy in front before you open it to anything else.
+
 Data lives in the `deepkey-data` volume (`/data` in the container). SQLite file: `deepkey.sqlite`.
 
 First visit:
@@ -31,7 +33,7 @@ Copy `.env.example` if you run without Compose, or set these on the service:
 | `DEEPKEY_HOST` | Bind address. `0.0.0.0` in Docker. |
 | `DEEPKEY_PORT` | Default `8787`. |
 | `DEEPKEY_PUBLIC_URL` | Public origin, e.g. `https://deepkey.example.com`. Set this behind HTTPS. |
-| `DEEPKEY_TRUST_PROXY` | Trust `X-Forwarded-*` only if the reverse proxy is yours. Default `false`. |
+| `DEEPKEY_TRUST_PROXY` | Trust `X-Forwarded-*` only if the reverse proxy is yours. Default `false`. With it off, login rate limits use the socket address. |
 
 ## HTTPS
 

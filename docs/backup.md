@@ -14,7 +14,7 @@ The file is JSON:
 
 It is still ciphertext. Import needs the same master password as that vault.
 
-Import replaces the vault inside a SQLite transaction. If validation fails, the vault you had is left untouched.
+Import asks for confirmation first, because it replaces everything in the vault. It runs inside a SQLite transaction, and if validation fails the vault you had is left untouched.
 
 After a successful import, DeepKey locks. Unlock with the backup's master password, which might not be the password you were using a minute ago.
 
@@ -32,11 +32,11 @@ That file is the real secrets, sitting in a text file. Same as copying `.env` ou
 
 Optional. Encrypted `.deepkeyvault` files written on a timer.
 
-Desktop writes into a folder you pick, or `%APPDATA%\DeepKey\backups` (and the macOS/Linux equivalent). It keeps the last 14 files. Web cannot write a folder quietly, so you get a banner on Overview when a backup is due and you save the file yourself.
+Desktop writes into a folder you pick, or `%APPDATA%\DeepKey\backups` (and the macOS/Linux equivalent). It keeps the last 14 of its own files, named `deepkey-<timestamp>.deepkeyvault`. Exports you save by hand into the same folder are not touched. Web cannot write a folder quietly, so you get a banner on Overview when a backup is due and you save the file yourself.
 
 If you turn this on, that folder is now part of your threat model. Anyone with the files still needs the master password. Anyone with the files **and** the password has the vault.
 
-Settings → Backup → Verify backup file checks the envelope without importing it.
+Settings → Backup → Verify backup file checks the file structure without importing it. It cannot tell whether the master password is right, because the password is only checked on import.
 
 ## Moving between desktop, web, and CLI
 

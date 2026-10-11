@@ -17,7 +17,7 @@ There is no recovery key I hold. I cannot unlock your vault.
 
 Every record gets its own nonce. If ciphertext, nonce, or associated data is changed, decrypt fails and the app treats it as bad data.
 
-KDF params below the floor (`m < 19456` or `t < 3`) are rejected. Old vaults cannot silently become weaker.
+KDF params below the floor (`m < 19456` or `t < 3`) are rejected, and so are params above the ceiling (`t > 6`, `m > 262144`, `p > 4`) and any Argon2 version other than 0x13. Old vaults cannot silently become weaker, and a tampered header cannot make unlock allocate gigabytes.
 
 Changing the master password re-wraps the DEK. Item ciphertext stays. That is on purpose: re-encrypting the whole vault on a password change is slow and easy to get wrong.
 
@@ -25,11 +25,12 @@ Changing the master password re-wraps the DEK. Item ciphertext stays. That is on
 
 - Argon2id hash for the instance login
 - HttpOnly, SameSite=Strict cookies; Secure when the request is HTTPS
-- Origin check on mutations
-- Rate-limited login
-- CSP, `X-Content-Type-Options`, `Referrer-Policy`, no framing
-- Database holds encrypted vault payloads
+- Origin check on mutations, and every mutation must also send `X-DeepKey-Request: 1`. A page on another origin cannot add that header without a CORS preflight, and the server never answers one. The origin check alone does not cover this: a page on another localhost port is same-site, so the session cookie reaches it.
+- Rate-limited login, per address and username. The address is the socket address. `X-Forwarded-For` is read only when `DEEPKEY_TRUST_PROXY` is set, because otherwise a client could pick a new value on every request.
+- CSP, `X-Content-Type-Options`, `Referrer-Policy`, no framing, and `Cache-Control: no-store` on API responses
+- Database holds encrypted vault payloads. Deleted rows are zeroed in the file, and wipe or restore rewrites the file and clears the WAL, so old ciphertext does not stay on disk
 - Record / attachment IDs and pref keys go through the same opaque-id rules as desktop IPC
+- Request bodies capped: login and setup 16 KB, prefs 2 MB, vault writes 64 MB. A full-vault restore is not capped, since it has to carry the whole vault.
 - Pref values capped (1 MB), same as desktop
 - `openExternal` in the browser only follows `https://`
 - No secrets in URLs
@@ -41,11 +42,11 @@ The server can see that you logged in. It cannot read vault items.
 
 - `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`
 - IPC allowlist in preload and main
-- Zod on vault payloads
+- Zod on every IPC payload, including flags, file names, bytes, dialog filters, and URLs
 - Navigation to random origins denied
 - External links only `https://` via `shell.openExternal`
 - Single-instance lock so two processes do not share one vault file
-- Wipe deletes records, attachments, header, prefs KV, and the OS-unlock blob
+- Wipe deletes records, attachments, header, prefs KV, and the OS-unlock blob. Restoring a backup also forgets the OS-unlock blob, because it belonged to the vault that was replaced.
 
 ## CLI
 
