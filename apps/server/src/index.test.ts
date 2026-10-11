@@ -54,6 +54,21 @@ describe("server security", () => {
     expect(await res.json()).toMatchObject({ error: "Missing request header." });
   });
 
+  it("caps the size of unauthenticated bodies", async () => {
+    const body = JSON.stringify({ username: "a", password: "x".repeat(20 * 1024) });
+    const res = await app.request("/api/auth/login", {
+      method: "POST",
+      headers: { ...OWN_CLIENT, "content-length": String(body.length) },
+      body,
+    });
+    expect(res.status).toBe(413);
+  });
+
+  it("marks API responses as not cacheable", async () => {
+    const res = await app.request("/api/auth/me");
+    expect(res.headers.get("cache-control")).toBe("no-store");
+  });
+
   it("does not let a rotating X-Forwarded-For reset the login limit", async () => {
     const statuses: number[] = [];
     for (let i = 0; i < 6; i += 1) {

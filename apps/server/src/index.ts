@@ -6,6 +6,7 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { getConnInfo } from "@hono/node-server/conninfo";
 import { Hono, type Context } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
+import { bodyLimit } from "hono/body-limit";
 import { secureHeaders } from "hono/secure-headers";
 import { APP_VERSION } from "@deepkey/config";
 import {
@@ -116,16 +117,41 @@ app.use("*", async (c, next) => {
   await next();
 });
 
+// API answers carry ciphertext and session state. Keep them out of shared caches.
+app.use("/api/*", async (c, next) => {
+  c.header("Cache-Control", "no-store");
+  await next();
+});
+
+const tooLarge = (c: Context) => c.json({ error: "Request too large." }, 413);
+// Login and setup are the only unauthenticated bodies, so they get the tightest cap.
+app.use("/api/auth/*", bodyLimit({ maxSize: 16 * 1024, onError: tooLarge }));
+app.use("/api/prefs/*", bodyLimit({ maxSize: 2 * 1024 * 1024, onError: tooLarge }));
+// Attachments are capped at 10 MB of plaintext, which is about 14 MB once encoded. Full-vault
+// restores go through /api/vault/replace and are left uncapped.
+const vaultBodyLimit = bodyLimit({ maxSize: 64 * 1024 * 1024, onError: tooLarge });
+app.use("/api/vault/*", (c, next) => (c.req.path === "/api/vault/replace" ? next() : vaultBodyLimit(c, next)));
+
+app.onError((err, c) => {
+  if (err instanceof SyntaxError) return c.json({ error: "Invalid JSON." }, 400);
+  const name = err instanceof Error ? err.name : "unknown";
+  if (name === "ZodError") return c.json({ error: "Invalid request." }, 400);
+  logError(`request failed: ${name}`);
+  return c.json({ error: "Server error." }, 500);
+});
+
 app.get("/health", (c) => c.json({ ok: true, version: APP_VERSION }));
 
 app.get("/api/auth/setup-needed", (c) => c.json({ needed: userCount() === 0 }));
 
 app.post("/api/auth/setup", async (c) => {
-  if (userCount() > 0) return c.json({ error: "Already set up." }, 400);
   const ip = clientIp(c);
   if (rateLimited(ip)) return c.json({ error: "Too many attempts." }, 429);
   try {
     const body = await c.req.json();
+    // Checked after the await: two setups that both read the count before either wrote would
+    // otherwise both succeed. Nothing is awaited between this check and createUser().
+    if (userCount() > 0) return c.json({ error: "Already set up." }, 400);
     createUser(String(body.username ?? ""), String(body.password ?? ""));
     const user = verifyUser(String(body.username), String(body.password));
     if (!user) return c.json({ error: "Could not create account." }, 400);
