@@ -80,6 +80,13 @@ const HISTORY_FIELDS = [
   "customFields",
 ] as const;
 
+export class VaultIntegrityError extends Error {
+  constructor() {
+    super("Vault data failed an integrity check.");
+    this.name = "VaultIntegrityError";
+  }
+}
+
 export class VaultEngine {
   private dek: Uint8Array | null = null;
   private header: VaultHeader | null = null;
@@ -142,18 +149,26 @@ export class VaultEngine {
     const header = await this.store.getHeader();
     if (!header) throw new Error("No vault found.");
     const dek = unlockDek(masterPassword, header);
-    this.header = header;
-    this.dek = dek;
-    await this.reload();
-    await this.purgeExpiredTrash();
+    await this.enter(header, dek);
   }
 
   async unlockWithDek(dek: Uint8Array): Promise<void> {
     const header = await this.store.getHeader();
     if (!header) throw new Error("No vault found.");
+    await this.enter(header, dek);
+  }
+
+  private async enter(header: VaultHeader, dek: Uint8Array): Promise<void> {
     this.header = header;
     this.dek = dek;
-    await this.reload();
+    try {
+      await this.reload();
+    } catch (err) {
+      // Do not stay unlocked with the key in memory when the records cannot be read.
+      this.lock();
+      this.header = null;
+      throw err;
+    }
     await this.purgeExpiredTrash();
   }
 
@@ -204,7 +219,14 @@ export class VaultEngine {
     const docs = new Map<string, VaultDocument>();
     for (const record of records) {
       const envelope = envelopeFromParts(record.nonce, record.ciphertext, record.cryptoVersion);
-      const doc = decryptRecord<VaultDocument>(dek, envelope);
+      let doc: VaultDocument;
+      try {
+        doc = decryptRecord<VaultDocument>(dek, envelope);
+      } catch {
+        throw new VaultIntegrityError();
+      }
+      // Ciphertext moved to another row still decrypts. The row has to hold the document it was written as.
+      if (doc.id !== record.id) throw new VaultIntegrityError();
       docs.set(doc.id, doc);
     }
     this.documents = docs;
@@ -346,7 +368,7 @@ export class VaultEngine {
       id: newId(),
       projectId,
       name,
-      sortOrder: this.environments(projectId).length,
+      sortOrder: Math.max(-1, ...this.environments(projectId).map((e) => e.sortOrder)) + 1,
       createdAt: t,
       updatedAt: t,
       deletedAt: null,

@@ -150,6 +150,51 @@ describe("vault-core", () => {
     expect(vault.unlocked).toBe(false);
   });
 
+  it("stays locked when a stored record cannot be read", async () => {
+    const { store, vault } = await ready();
+    const item = await vault.createItem({ type: "token", name: "t", fields: { value: "v" } });
+    const record = (await store.listRecords()).find((r) => r.id === item.id)!;
+    const c = record.ciphertext;
+    await store.putRecord({ ...record, ciphertext: (c[0] === "A" ? "B" : "A") + c.slice(1) });
+    vault.lock();
+    await expect(vault.unlock(PASS)).rejects.toThrow("integrity");
+    expect(vault.unlocked).toBe(false);
+    expect(vault.vaultHeader).toBeNull();
+  });
+
+  it("rejects ciphertext moved from one row to another", async () => {
+    const { store, vault } = await ready();
+    const first = await vault.createItem({ type: "token", name: "first", fields: { value: "1" } });
+    const second = await vault.createItem({ type: "token", name: "second", fields: { value: "2" } });
+    const records = await store.listRecords();
+    const a = records.find((r) => r.id === first.id)!;
+    const b = records.find((r) => r.id === second.id)!;
+    await store.putRecord({ ...a, nonce: b.nonce, ciphertext: b.ciphertext, cryptoVersion: b.cryptoVersion });
+    await store.putRecord({ ...b, nonce: a.nonce, ciphertext: a.ciphertext, cryptoVersion: a.cryptoVersion });
+    vault.lock();
+    await expect(vault.unlock(PASS)).rejects.toThrow("integrity");
+  });
+
+  it("keeps environment sort orders unique after a deletion", async () => {
+    const { vault } = await ready();
+    const project = await vault.createProject("App");
+    const dev = await vault.createEnvironment(project.id, "Development");
+    const staging = await vault.createEnvironment(project.id, "Staging");
+    await vault.createEnvironment(project.id, "Production");
+    await vault.deleteEnvironment(staging.id);
+    await vault.createEnvironment(project.id, "QA");
+    const orders = vault.environments(project.id).map((e) => e.sortOrder);
+    expect(new Set(orders).size).toBe(orders.length);
+    expect(vault.environments(project.id)[0]?.id).toBe(dev.id);
+  });
+
+  it("finds accented names when the query has no accent", async () => {
+    const { vault } = await ready();
+    await vault.createItem({ type: "token", name: "Naïve token", fields: { value: "v" } });
+    expect(vault.search("naive").map((h) => h.title)).toEqual(["Naïve token"]);
+    expect(vault.search("NAÏVE").map((h) => h.title)).toEqual(["Naïve token"]);
+  });
+
   it("uses the last value when an env key repeats, in preview, import, and raw save", async () => {
     const { vault } = await ready();
     const project = await vault.createProject("App");

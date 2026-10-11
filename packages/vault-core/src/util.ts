@@ -17,7 +17,8 @@ export function changedFields<T extends Record<string, unknown>>(before: T, afte
 }
 
 export function normalizeSearch(value: string): string {
-  return value.toLocaleLowerCase().normalize("NFKD");
+  // NFKD splits "é" into "e" plus a combining accent. Drop the accents so "naive" finds "naïve".
+  return value.toLocaleLowerCase().normalize("NFKD").replace(/\p{M}/gu, "");
 }
 
 export function matchesQuery(haystack: string, query: string): boolean {
