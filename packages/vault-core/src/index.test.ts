@@ -150,6 +150,68 @@ describe("vault-core", () => {
     expect(vault.unlocked).toBe(false);
   });
 
+  it("restores a deleted project with the environments and items deleted along with it", async () => {
+    const { vault } = await ready();
+    const project = await vault.createProject("App");
+    const env = await vault.createEnvironment(project.id, "Development");
+    const item = await vault.createItem({
+      type: "env_var",
+      name: "A",
+      projectId: project.id,
+      environmentId: env.id,
+      fields: { value: "1" },
+    });
+    await vault.deleteProject(project.id);
+    expect(vault.projects().map((p) => p.id)).not.toContain(project.id);
+    expect(vault.trashProjects().map((p) => p.id)).toEqual([project.id]);
+
+    await vault.restoreProject(project.id);
+    expect(vault.projects().map((p) => p.id)).toContain(project.id);
+    expect(vault.environments(project.id).map((e) => e.id)).toEqual([env.id]);
+    expect(vault.getItem(item.id)?.deletedAt).toBeNull();
+    expect(vault.trashProjects()).toHaveLength(0);
+  });
+
+  it("keeps an item restored on its own when its project is purged", async () => {
+    const { store, vault } = await ready();
+    const project = await vault.createProject("App");
+    const item = await vault.createItem({ type: "token", name: "keep me", projectId: project.id, fields: { value: "v" } });
+    await vault.deleteProject(project.id);
+    await vault.restoreItem(item.id);
+
+    await vault.deleteProjectPermanently(project.id);
+
+    expect(vault.getItem(item.id)?.name).toBe("keep me");
+    expect(vault.getItem(item.id)?.projectId).toBeNull();
+    expect((await store.listRecords()).map((r) => r.id)).not.toContain(project.id);
+  });
+
+  it("empties deleted projects from the trash and leaves no records behind", async () => {
+    const { store, vault } = await ready();
+    const project = await vault.createProject("App");
+    const env = await vault.createEnvironment(project.id, "Development");
+    await vault.createItem({ type: "token", name: "gone", projectId: project.id, environmentId: env.id, fields: { value: "v" } });
+    await vault.deleteProject(project.id);
+
+    await vault.emptyTrash();
+
+    expect(vault.trashProjects()).toHaveLength(0);
+    const ids = (await store.listRecords()).map((r) => r.id);
+    expect(ids).not.toContain(project.id);
+    expect(ids).not.toContain(env.id);
+  });
+
+  it("archived projects leave the lists and can be brought back", async () => {
+    const { vault } = await ready();
+    const project = await vault.createProject("Old");
+    await vault.updateProject(project.id, { archived: true });
+    expect(vault.projects().map((p) => p.id)).not.toContain(project.id);
+    expect(vault.allProjects().filter((p) => p.archived).map((p) => p.id)).toEqual([project.id]);
+
+    await vault.updateProject(project.id, { archived: false });
+    expect(vault.projects().map((p) => p.id)).toContain(project.id);
+  });
+
   it("stays locked when a stored record cannot be read", async () => {
     const { store, vault } = await ready();
     const item = await vault.createItem({ type: "token", name: "t", fields: { value: "v" } });

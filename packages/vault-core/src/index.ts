@@ -508,6 +508,9 @@ export class VaultEngine {
     for (const item of this.trashItems()) {
       await this.deletePermanent(item.id);
     }
+    for (const project of this.trashProjects()) {
+      await this.deleteProjectPermanently(project.id);
+    }
   }
 
   async purgeExpiredTrash(): Promise<void> {
@@ -519,6 +522,55 @@ export class VaultEngine {
         await this.deletePermanent(item.id);
       }
     }
+    for (const project of this.trashProjects()) {
+      if ((project.deletedAt ?? 0) <= cutoff) {
+        await this.deleteProjectPermanently(project.id);
+      }
+    }
+  }
+
+  trashProjects(): VaultProject[] {
+    return [...this.documents.values()].filter((d): d is VaultProject => d.kind === "project" && Boolean(d.deletedAt));
+  }
+
+  /** Brings back a deleted project, with the environments and items that were deleted along with it. */
+  async restoreProject(id: string): Promise<void> {
+    const project = this.getProject(id);
+    if (!project?.deletedAt) throw new Error("Project not found.");
+    const batch = project.deletedAt;
+    const t = now();
+    await this.putDocument({ ...project, deletedAt: null, updatedAt: t });
+    const members = [...this.documents.values()].filter(
+      (d): d is VaultEnvironment | VaultItem =>
+        (d.kind === "environment" || d.kind === "item") && d.projectId === id && d.deletedAt === batch,
+    );
+    for (const doc of members) {
+      await this.putDocument({ ...doc, deletedAt: null, updatedAt: t });
+    }
+  }
+
+  /**
+   * Removes a deleted project for good, with its environments and its trashed items. Items that were
+   * restored on their own are kept and detached from the project, so purging never takes live data.
+   */
+  async deleteProjectPermanently(id: string): Promise<void> {
+    const project = this.getProject(id);
+    if (!project) throw new Error("Project not found.");
+    const t = now();
+    for (const doc of [...this.documents.values()]) {
+      if (doc.kind === "item" && doc.projectId === id) {
+        if (doc.deletedAt) await this.deletePermanent(doc.id);
+        else await this.putDocument({ ...doc, projectId: null, environmentId: null, updatedAt: t });
+      }
+    }
+    for (const doc of [...this.documents.values()]) {
+      if (doc.kind === "environment" && doc.projectId === id) {
+        await this.store.deleteRecord(doc.id);
+        this.documents.delete(doc.id);
+      }
+    }
+    await this.store.deleteRecord(id);
+    this.documents.delete(id);
   }
 
   async restoreRevision(itemId: string, revisionId: string): Promise<VaultItem> {
