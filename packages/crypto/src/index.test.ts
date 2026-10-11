@@ -112,6 +112,19 @@ describe("crypto", () => {
     expect(() => deriveKek("password", params)).toThrow(/floor/);
   });
 
+  it("rejects an argon2 version this build does not run", () => {
+    const params: KdfParams = {
+      algorithm: "argon2id",
+      version: 0x10,
+      t: 3,
+      m: 19456,
+      p: 1,
+      dkLen: 32,
+      salt: bytesToB64(crypto.getRandomValues(new Uint8Array(16))),
+    };
+    expect(() => deriveKek("password", params)).toThrow(/version/);
+  });
+
   it("rejects kdf params above the ceiling before running argon2", () => {
     const params: KdfParams = {
       algorithm: "argon2id",

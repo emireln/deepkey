@@ -148,6 +148,11 @@ export function deriveKek(password: string, params: KdfParams): Uint8Array {
   if (params.algorithm !== "argon2id") {
     throw new CryptoError("Unsupported KDF.");
   }
+  // argon2id below always runs version 0x13. A header that asks for another version must not be run
+  // as 0x13 without anyone noticing.
+  if (params.version !== 0x13) {
+    throw new CryptoError("Unsupported Argon2 version.");
+  }
   if (params.m < KDF_MIN.m || params.t < KDF_MIN.t || params.p < 1 || params.dkLen !== 32) {
     throw new CryptoError("KDF parameters below the secure floor.");
   }
