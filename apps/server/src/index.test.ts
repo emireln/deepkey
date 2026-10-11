@@ -1,13 +1,34 @@
+import fs from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { app } from "./index.js";
 
 const OWN_CLIENT = { "x-deepkey-request": "1", "content-type": "application/json" };
+const TOKEN_FILE = path.resolve("tmp-test-data", "setup.token");
 
 describe("server security", () => {
   it("health is public", async () => {
     const res = await app.request("/health");
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ ok: true });
+  });
+
+  it("needs the setup token before the first account can be created", async () => {
+    const needed = await app.request("/api/auth/setup-needed");
+    expect(await needed.json()).toEqual({ needed: true });
+    const payload = (setupToken?: string) =>
+      JSON.stringify({ username: "owner", password: "correct-horse-battery", ...(setupToken ? { setupToken } : {}) });
+
+    const missing = await app.request("/api/auth/setup", { method: "POST", headers: OWN_CLIENT, body: payload() });
+    expect(missing.status).toBe(403);
+    const wrong = await app.request("/api/auth/setup", { method: "POST", headers: OWN_CLIENT, body: payload("not-the-token") });
+    expect(wrong.status).toBe(403);
+    expect(fs.existsSync(TOKEN_FILE)).toBe(true);
+
+    const token = fs.readFileSync(TOKEN_FILE, "utf8").trim();
+    const created = await app.request("/api/auth/setup", { method: "POST", headers: OWN_CLIENT, body: payload(token) });
+    expect(created.status).toBe(200);
+    expect(fs.existsSync(TOKEN_FILE)).toBe(false);
   });
 
   it("rejects unauthenticated vault access", async () => {

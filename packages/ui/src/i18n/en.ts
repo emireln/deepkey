@@ -365,6 +365,9 @@ export const en = {
   loginRecoveryWarning:
     "The login password is separate from the master password. If you forget the login password, you cannot reset it in the app. Someone with access to the server can remove the account and create it again. The vault stays, and the master password still opens it.",
   loginRecoveryConfirm: "I understand I cannot reset this login password from the app.",
+  setupToken: "Setup token",
+  setupTokenHelp:
+    "The server wrote it to setup.token in its data folder. With Docker: docker compose exec deepkey cat /data/setup.token",
 };
 
 export type MessageKey = keyof typeof en;

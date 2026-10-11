@@ -32,7 +32,7 @@ export interface PlatformAdapter {
   };
   auth?: {
     needsSetup(): Promise<boolean>;
-    setup(username: string, password: string): Promise<void>;
+    setup(username: string, password: string, setupToken: string): Promise<void>;
     login(username: string, password: string): Promise<void>;
     logout(): Promise<void>;
     me(): Promise<{ username: string } | null>;

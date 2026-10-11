@@ -367,4 +367,7 @@ export const ptBR: Messages = {
   loginRecoveryWarning:
     "A senha de login é separada da senha mestra. Se você esquecer a senha de login, não poderá redefini-la pelo aplicativo. Quem tiver acesso ao servidor pode remover a conta e criá-la de novo. O cofre continua existindo, e a senha mestra ainda o abre.",
   loginRecoveryConfirm: "Entendo que não posso redefinir esta senha de login pelo aplicativo.",
+  setupToken: "Token de configuração",
+  setupTokenHelp:
+    "O servidor gravou o token em setup.token, na pasta de dados. No Docker: docker compose exec deepkey cat /data/setup.token",
 };

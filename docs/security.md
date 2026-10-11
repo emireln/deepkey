@@ -30,6 +30,7 @@ Changing the master password re-wraps the DEK. Item ciphertext stays. That is on
 - CSP, `X-Content-Type-Options`, `Referrer-Policy`, no framing, and `Cache-Control: no-store` on API responses
 - Database holds encrypted vault payloads. Deleted rows are zeroed in the file, and wipe or restore rewrites the file and clears the WAL, so old ciphertext does not stay on disk
 - Record / attachment IDs and pref keys go through the same opaque-id rules as desktop IPC
+- First-run setup needs the token in `setup.token` in the data folder. A new instance writes it until the first account exists, so a stranger who reaches a new server first cannot claim it.
 - Request bodies capped: login and setup 16 KB, prefs 2 MB, vault writes 64 MB. A full-vault restore is not capped, since it has to carry the whole vault.
 - Pref values capped (1 MB), same as desktop
 - `openExternal` in the browser only follows `https://`

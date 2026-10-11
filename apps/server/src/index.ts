@@ -24,10 +24,13 @@ import {
   dbPath,
   destroyOtherSessions,
   destroySession,
+  ensureSetupToken,
   logError,
   logInfo,
   rateLimited,
   recordAttempt,
+  removeSetupToken,
+  setupTokenMatches,
   sessionUser,
   store,
   userCount,
@@ -74,6 +77,10 @@ function originAllowed(c: { req: { url: string; header: (n: string) => string | 
     return false;
   }
 }
+
+// A fresh instance writes setup.token to the data folder. Setup needs it, so a stranger who reaches the
+// server first cannot claim it.
+ensureSetupToken();
 
 const app = new Hono();
 
@@ -152,7 +159,12 @@ app.post("/api/auth/setup", async (c) => {
     // Checked after the await: two setups that both read the count before either wrote would
     // otherwise both succeed. Nothing is awaited between this check and createUser().
     if (userCount() > 0) return c.json({ error: "Already set up." }, 400);
+    if (!setupTokenMatches(body.setupToken)) {
+      recordAttempt(ip, false);
+      return c.json({ error: "Setup token is wrong." }, 403);
+    }
     createUser(String(body.username ?? ""), String(body.password ?? ""));
+    removeSetupToken();
     const user = verifyUser(String(body.username), String(body.password));
     if (!user) return c.json({ error: "Could not create account." }, 400);
     const session = createSession(user);

@@ -144,6 +144,7 @@ export function WebAuth() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [ack, setAck] = useState(false);
+  const [setupToken, setSetupToken] = useState("");
 
   useEffect(() => {
     platform.auth?.needsSetup().then(setSetup);
@@ -155,7 +156,7 @@ export function WebAuth() {
     setBusy(true);
     setError(null);
     try {
-      if (setup) await platform.auth!.setup(username, password);
+      if (setup) await platform.auth!.setup(username, password, setupToken.trim());
       else await platform.auth!.login(username, password);
       window.location.reload();
     } catch (err) {
@@ -176,9 +177,19 @@ export function WebAuth() {
         <Field label={t("authPassword")}>
           <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
         </Field>
+        {setup ? (
+          <Field label={t("setupToken")}>
+            <Input value={setupToken} autoComplete="off" onChange={(e) => setSetupToken(e.target.value)} />
+            <p className="hint">{t("setupTokenHelp")}</p>
+          </Field>
+        ) : null}
         {setup ? <RecoveryAck checked={ack} onChange={setAck} warning="loginRecoveryWarning" label="loginRecoveryConfirm" /> : null}
         {error ? <p className="error-text">{error}</p> : null}
-        <Button variant="primary" disabled={busy || username.length < 3 || password.length < 10 || (setup && !ack)} onClick={submit}>
+        <Button
+          variant="primary"
+          disabled={busy || username.length < 3 || password.length < 10 || (setup && (!ack || !setupToken.trim()))}
+          onClick={submit}
+        >
           {setup ? t("continue") : t("unlock")}
         </Button>
       </div>

@@ -18,8 +18,9 @@ Data lives in the `deepkey-data` volume (`/data` in the container). SQLite file:
 
 First visit:
 
-1. Create the instance user (login password).
-2. Create the vault (master password).
+1. Get the setup token: `docker compose exec deepkey cat /data/setup.token`. The server writes it when there is no account yet, and it refuses setup without it. The file is deleted once the account exists.
+2. Create the instance user (login password).
+3. Create the vault (master password).
 
 Do not reuse the same string for both. The login password is hashed on the server. The master password never should be.
 

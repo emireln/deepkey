@@ -29,6 +29,42 @@ function sessionSecret(): string {
 
 export const SESSION_SECRET = sessionSecret();
 
+const SETUP_TOKEN_FILE = "setup.token";
+
+function setupTokenPath(): string {
+  return path.join(dataDir(), SETUP_TOKEN_FILE);
+}
+
+/**
+ * Until the first account exists, setup needs a token that only someone who can read the data folder has.
+ * Without it, whoever reaches a new server first could claim it. The file goes away once setup succeeds.
+ */
+export function ensureSetupToken(): void {
+  if (userCount() > 0) {
+    removeSetupToken();
+    return;
+  }
+  const file = setupTokenPath();
+  if (fs.existsSync(file)) return;
+  fs.mkdirSync(dataDir(), { recursive: true });
+  fs.writeFileSync(file, bytesToB64(randomBytes(24)), { mode: 0o600, flag: "wx" });
+}
+
+export function setupTokenMatches(candidate: unknown): boolean {
+  if (typeof candidate !== "string") return false;
+  let expected: string;
+  try {
+    expected = fs.readFileSync(setupTokenPath(), "utf8").trim();
+  } catch {
+    return false;
+  }
+  return expected.length > 0 && safeEqual(candidate, expected);
+}
+
+export function removeSetupToken(): void {
+  fs.rmSync(setupTokenPath(), { force: true });
+}
+
 export function hashToken(token: string): string {
   return sha256Hex(`${SESSION_SECRET}:${token}`);
 }
@@ -93,11 +129,11 @@ export function verifyUser(username: string, password: string): string | null {
   }
   const kdf = JSON.parse(row.kdf) as KdfParams;
   const hash = bytesToB64(deriveKek(password, kdf));
-  if (!sameHash(hash, row.password_hash)) return null;
+  if (!safeEqual(hash, row.password_hash)) return null;
   return row.id;
 }
 
-function sameHash(a: string, b: string): boolean {
+function safeEqual(a: string, b: string): boolean {
   const left = Buffer.from(a);
   const right = Buffer.from(b);
   return left.length === right.length && timingSafeEqual(left, right);
@@ -134,7 +170,7 @@ export function changeUserPassword(userId: string, current: string, next: string
   if (!row) return false;
   const kdf = JSON.parse(row.kdf) as KdfParams;
   const currentHash = bytesToB64(deriveKek(current, kdf));
-  if (!sameHash(currentHash, row.password_hash)) return false;
+  if (!safeEqual(currentHash, row.password_hash)) return false;
   const parsedNext = authPasswordSchema.parse(next);
   const nextKdf: KdfParams = {
     algorithm: "argon2id",

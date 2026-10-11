@@ -77,8 +77,8 @@ export function createWebPlatform(): PlatformAdapter {
         const data = await fetch("/api/auth/setup-needed", { credentials: "same-origin" }).then((r) => r.json());
         return Boolean(data.needed);
       },
-      async setup(username, password) {
-        await api("/api/auth/setup", { method: "POST", body: JSON.stringify({ username, password }) });
+      async setup(username, password, setupToken) {
+        await api("/api/auth/setup", { method: "POST", body: JSON.stringify({ username, password, setupToken }) });
       },
       async login(username, password) {
         await api("/api/auth/login", { method: "POST", body: JSON.stringify({ username, password }) });
