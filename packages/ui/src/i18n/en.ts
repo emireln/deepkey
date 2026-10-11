@@ -370,6 +370,8 @@ export const en = {
     "The server wrote it to setup.token in its data folder. With Docker: docker compose exec deepkey cat /data/setup.token",
   pwHintVariety:
     "Use 20 or more characters, or at least three kinds of character (uppercase, lowercase, digits, symbols). Avoid repeating a few characters.",
+  deleteVaultSubDesktop:
+    "This removes the local encrypted database and the automatic backups DeepKey wrote for it. There is no recovery. Backups you exported by hand are not touched.",
 };
 
 export type MessageKey = keyof typeof en;

@@ -4,6 +4,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { sqliteVaultStore } from "@deepkey/database";
 import {
+  autoBackupFileName,
+  isAutoBackupFileName,
   ipcBytesSchema,
   ipcDirectorySchema,
   ipcFileNameSchema,
@@ -154,13 +156,31 @@ function backupsDir(preferred?: string | null): string {
   return userData("backups");
 }
 
-// Only the files this app writes on its timer. Exports the user saved by hand can share the folder.
-const AUTO_BACKUP_NAME = /^deepkey-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.deepkeyvault$/;
+/** Folders the timer may have written to: the default one, and the one chosen in settings. */
+function autoBackupFolders(): string[] {
+  const folders = [userData("backups")];
+  try {
+    const raw = store?.getKv("settings");
+    const chosen = raw ? JSON.parse(raw)?.backup?.autoBackupDir : null;
+    if (typeof chosen === "string" && path.isAbsolute(chosen) && !chosen.includes("\0")) folders.push(chosen);
+  } catch {
+    /* no settings saved yet */
+  }
+  return [...new Set(folders)];
+}
+
+/** Removes the timed backups from a folder. Exports the user saved by hand are left alone. */
+function removeAutoBackups(folder: string): void {
+  if (!fs.existsSync(folder)) return;
+  for (const name of fs.readdirSync(folder)) {
+    if (isAutoBackupFileName(name)) fs.rmSync(path.join(folder, name), { force: true });
+  }
+}
 
 function pruneBackups(dir: string): void {
   const files = fs
     .readdirSync(dir)
-    .filter((name) => AUTO_BACKUP_NAME.test(name))
+    .filter((name) => isAutoBackupFileName(name))
     .map((name) => ({ name, mtime: fs.statSync(path.join(dir, name)).mtimeMs }))
     .sort((a, b) => b.mtime - a.mtime);
   for (const extra of files.slice(14)) {
@@ -326,8 +346,11 @@ function registerIpc(): void {
     removeOsUnlockKey();
   });
   ipcMain.handle("vault:wipe", async () => {
+    // Read the folders first. Wiping clears the settings row that names the chosen folder.
+    const folders = autoBackupFolders();
     await store.wipe();
     removeOsUnlockKey();
+    for (const folder of folders) removeAutoBackups(folder);
   });
   ipcMain.handle("vault:dbPath", () => dbFile());
   ipcMain.handle("prefs:get", (_e, key) => {
@@ -411,8 +434,7 @@ function registerIpc(): void {
   ipcMain.handle("backup:writeAuto", (_e, bytes, dir) => {
     const folder = backupsDir(ipcDirectorySchema.parse(dir));
     fs.mkdirSync(folder, { recursive: true });
-    const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-    const file = path.join(folder, `deepkey-${stamp}.deepkeyvault`);
+    const file = path.join(folder, autoBackupFileName(new Date()));
     fs.writeFileSync(file, ipcBytesSchema.parse(bytes));
     pruneBackups(folder);
     return file;

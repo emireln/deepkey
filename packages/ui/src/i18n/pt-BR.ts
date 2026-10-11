@@ -372,4 +372,6 @@ export const ptBR: Messages = {
     "O servidor gravou o token em setup.token, na pasta de dados. No Docker: docker compose exec deepkey cat /data/setup.token",
   pwHintVariety:
     "Use 20 ou mais caracteres, ou pelo menos três tipos de caractere (maiúsculas, minúsculas, números e símbolos). Evite repetir poucos caracteres.",
+  deleteVaultSubDesktop:
+    "Isso remove o banco criptografado local e os backups automáticos que o DeepKey gravou para ele. Não há recuperação. Backups que você exportou manualmente não são alterados.",
 };

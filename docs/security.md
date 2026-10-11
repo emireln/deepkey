@@ -47,7 +47,7 @@ The server can see that you logged in. It cannot read vault items.
 - Navigation to random origins denied
 - External links only `https://` via `shell.openExternal`
 - Single-instance lock so two processes do not share one vault file
-- Wipe deletes records, attachments, header, prefs KV, and the OS-unlock blob. Restoring a backup also forgets the OS-unlock blob, because it belonged to the vault that was replaced.
+- Wipe deletes records, attachments, header, prefs KV, the OS-unlock blob, and the timed backups the app wrote. Backups you exported by hand are kept. Restoring a backup also forgets the OS-unlock blob, because it belonged to the vault that was replaced.
 
 ## CLI
 

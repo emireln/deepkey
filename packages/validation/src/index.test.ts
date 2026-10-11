@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   assertNoPathTraversal,
+  autoBackupFileName,
   formatHint,
+  isAutoBackupFileName,
   masterPasswordIssue,
   masterPasswordSchema,
   opaqueIdSchema,
@@ -11,6 +13,15 @@ import {
 } from "./index.js";
 
 describe("validation", () => {
+  it("names timed backups so only they are recognised", () => {
+    const name = autoBackupFileName(new Date("2026-10-11T09:02:33.123Z"));
+    expect(name).toBe("deepkey-2026-10-11T09-02-33.deepkeyvault");
+    expect(isAutoBackupFileName(name)).toBe(true);
+    expect(isAutoBackupFileName("vault.deepkeyvault")).toBe(false);
+    expect(isAutoBackupFileName("deepkey-backup.deepkeyvault")).toBe(false);
+    expect(isAutoBackupFileName("deepkey-2026-10-11T09-02-33.deepkeyvault.bak")).toBe(false);
+  });
+
   it("accepts a varied password or a long passphrase, and refuses repetitive ones", () => {
     expect(masterPasswordIssue("short")).toBe("length");
     expect(masterPasswordIssue("aaaaaaaaaaaaaaaaaaaaaaaa")).toBe("variety");

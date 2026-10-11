@@ -45,6 +45,7 @@ export function SettingsScreen({ initial = "general" }: { initial?: Category }) 
   const [pendingImport, setPendingImport] = useState<Uint8Array | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const nextIssue = masterPasswordIssue(nextPw);
+  const deleteVaultText = platform.kind === "desktop" ? t("deleteVaultSubDesktop") : t("deleteVaultSub");
 
   useEffect(() => {
     platform.storage.getDbPath().then(setDbPath);
@@ -457,7 +458,7 @@ export function SettingsScreen({ initial = "general" }: { initial?: Category }) 
               </Button>
               <div className="danger-zone" style={{ marginTop: 28 }}>
                 <h2 className="section-title">{t("dangerZone")}</h2>
-                <p className="hint">{t("deleteVaultSub")}</p>
+                <p className="hint">{deleteVaultText}</p>
                 <div style={{ marginTop: 16 }}>
                   <Button variant="danger" onClick={() => setDeleteOpen(true)}>
                     {t("deleteVault")}
@@ -517,7 +518,7 @@ export function SettingsScreen({ initial = "general" }: { initial?: Category }) 
         <div className="dialog-backdrop">
           <div className="dialog">
             <h2>{t("deleteVault")}</h2>
-            <p>{t("deleteVaultSub")}</p>
+            <p>{deleteVaultText}</p>
             <Field label={t("masterPassword")}>
               <Input type="password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} />
             </Field>

@@ -216,6 +216,19 @@ export function masterPasswordIssue(password: string): PasswordHint | null {
   return null;
 }
 
+/** File name for a timed backup, e.g. deepkey-2026-10-11T09-02-33.deepkeyvault. */
+export function autoBackupFileName(at: Date): string {
+  const stamp = at.toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  return `deepkey-${stamp}.deepkeyvault`;
+}
+
+const AUTO_BACKUP_NAME = /^deepkey-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.deepkeyvault$/;
+
+/** True only for files the timer writes. A backup the user exported by hand does not match. */
+export function isAutoBackupFileName(name: string): boolean {
+  return AUTO_BACKUP_NAME.test(name);
+}
+
 export function safeFilename(name: string): string {
   if (name.includes("..") || name.includes("/") || name.includes("\\") || name.includes("\0")) {
     return "file";

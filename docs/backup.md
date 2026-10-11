@@ -32,7 +32,7 @@ That file is the real secrets, sitting in a text file. Same as copying `.env` ou
 
 Optional. Encrypted `.deepkeyvault` files written on a timer.
 
-Desktop writes into a folder you pick, or `%APPDATA%\DeepKey\backups` (and the macOS/Linux equivalent). It keeps the last 14 of its own files, named `deepkey-<timestamp>.deepkeyvault`. Exports you save by hand into the same folder are not touched. Web cannot write a folder quietly, so you get a banner on Overview when a backup is due and you save the file yourself.
+Desktop writes into a folder you pick, or `%APPDATA%\DeepKey\backups` (and the macOS/Linux equivalent). It keeps the last 14 of its own files, named `deepkey-<timestamp>.deepkeyvault`. Exports you save by hand into the same folder are not touched. Wiping the vault deletes these timed files from both folders the app uses, the default one and the one you picked. Exports you saved by hand stay. Web cannot write a folder quietly, so you get a banner on Overview when a backup is due and you save the file yourself.
 
 If you turn this on, that folder is now part of your threat model. Anyone with the files still needs the master password. Anyone with the files **and** the password has the vault.
 
